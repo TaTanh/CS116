@@ -79,13 +79,28 @@ def train_model(
         print(f"Training accuracy: {train_score:.4f}")
         
     elif model_type == "random_forest":
+        # Random Forest needs less data due to memory constraints
+        # Sample 20% of data if > 10M samples
+        if X.shape[0] > 10_000_000:
+            sample_size = int(X.shape[0] * 0.2)
+            print(f"⚠️  Random Forest: Sampling {sample_size:,} samples (20%) to prevent memory crash...")
+            np.random.seed(random_state)
+            indices = np.random.choice(X.shape[0], sample_size, replace=False)
+            X_sampled = X[indices]
+            y_sampled = y[indices]
+            print(f"   Sampled data: {X_sampled.shape[0]:,} samples")
+            print(f"   Positive samples: {y_sampled.sum():,} ({y_sampled.mean()*100:.2f}%)")
+        else:
+            X_sampled = X
+            y_sampled = y
+        
         # Train Random Forest
         if model_params is None:
             model_params = {
-                "n_estimators": 100,
-                "max_depth": 10,
-                "min_samples_split": 5,
-                "min_samples_leaf": 2,
+                "n_estimators": 50,  # Reduced from 100 to save memory
+                "max_depth": 8,      # Reduced from 10 to save memory
+                "min_samples_split": 20,  # Increased from 5 to speed up
+                "min_samples_leaf": 10,   # Increased from 2 to speed up
                 "random_state": random_state,
                 "n_jobs": -1,
                 "verbose": 1,
@@ -93,9 +108,13 @@ def train_model(
         
         print("Training Random Forest...")
         model = RandomForestClassifier(**model_params)
-        model.fit(X, y)
+        model.fit(X_sampled, y_sampled)
         
-        train_score = model.score(X, y)
+        # Evaluate on sampled data
+        if X.shape[0] > 10_000_000:
+            train_score = model.score(X_sampled, y_sampled)
+        else:
+            train_score = model.score(X, y)
         print(f"Training accuracy: {train_score:.4f}")
         
     elif model_type == "xgboost":

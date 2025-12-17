@@ -90,7 +90,7 @@ feature_cols = [
 print(f"   Using {len(feature_cols)} features from EDA insights")
 
 # Choose model type: 'logistic'/'lightgbm'/'random_forest'/'xgboost'
-model_type_used = 'xgboost'  # CHANGE THIS
+model_type_used = 'random_forest'  # CHANGE THIS
 
 model = train_model(
     features, 
@@ -99,7 +99,7 @@ model = train_model(
     model_type=model_type_used,
     random_state=42
 )
-print(f"✓ Model trained successfully ({model_type_used})")
+print(f"Model trained successfully ({model_type_used})")
 
 # 6. Generate predictions and evaluate
 print("\n[6/6] Generating predictions (Top 20 per customer)...")
