@@ -34,19 +34,43 @@ print(f"✓ Recent period: {begin_recent.date()} to {end_recent.date()}")
 # 3. Build features (still LazyFrame - efficient!)
 print("\n[3/6] Building features...")
 print("   Note: This creates a query plan, no data loaded yet...")
+print("   ⚠️  Using 20% customer sample to prevent memory crash...")
+
+# Sample customers to reduce data size (from 244K to ~49K customers)
+# This reduces candidate pairs from potentially 100M+ to ~20M
+sampled_customers = (
+    transactions
+    .select("customer_id")
+    .unique()
+    .filter((pl.col("customer_id").hash(seed=42) % 5) == 0)  # 20% sample
+)
+
+# Filter transactions to sampled customers only
+transactions_sampled = transactions.join(sampled_customers, on="customer_id", how="inner")
+
 features_lazy = build_feature_label_table(
-    transactions, items, users,
+    transactions_sampled, items, users,
     begin_hist, end_hist,
     begin_recent, end_recent
 )
-print(f"✓ Feature query plan created successfully")
+print(f"✓ Feature query plan created (with 20% customer sample)")
 
-# 4. Collect features for training (this is where memory is used)
-print("\n[4/6] Collecting features into memory...")
-print("   ⚠️  WARNING: This step processes 36M+ transactions")
-print("   This may take 5-10 minutes and use 2-4GB RAM...")
-print("   Please be patient, no output until complete...")
-features = features_lazy.collect()
+# 4. Collect features with STREAMING (prevents memory crash)
+print("\n[4/6] Collecting features with STREAMING (prevents memory crash)...")
+print("   ⚠️  Processing 36M+ transactions in chunks")
+print("   This may take 10-15 minutes but uses <3GB RAM...")
+print("   Progress: ", end="", flush=True)
+
+# STREAM PROCESSING: Use collect(streaming=True) for chunked processing
+try:
+    features = features_lazy.collect(streaming=True)
+    print("✓ Collected with streaming mode")
+except Exception as e:
+    print(f"\n   Warning: Streaming mode failed ({str(e)})")
+    print("   Falling back to standard collect (may use more RAM)...")
+    features = features_lazy.collect()
+    print("✓ Collected successfully")
+
 print(f"✓ Features collected: {features.shape}")
 pos_count = features.filter(pl.col('Y')==1).shape[0]
 neg_count = features.filter(pl.col('Y')==0).shape[0]
@@ -56,7 +80,14 @@ print(f"   Class balance: {pos_count/(pos_count+neg_count):.2%} positive")
 
 # 5. Train model
 print("\n[5/6] Training model...")
-feature_cols = ['X1_brand_cnt_hist', 'X2_age_group_cnt_hist', 'X3_category_cnt_hist']
+feature_cols = [
+    'X1_brand_cnt_hist', 'X2_age_group_cnt_hist', 'X3_category_cnt_hist',
+    'X4_days_since_last_purchase', 'X5_purchase_frequency', 'X6_is_power_user',
+    'X7_avg_items_per_purchase', 'X8_top_brand_ratio', 'X9_brand_diversity',
+    'X10_category_diversity_score', 'X11_purchase_day_mode', 'X12_is_new_customer',
+    'X13_avg_item_popularity'
+]
+print(f"   Using {len(feature_cols)} features from EDA insights")
 model = train_model(
     features, 
     feature_cols, 
@@ -108,9 +139,11 @@ print("="*70)
 print("\n[7/7] Saving model and predictions...")
 from src.recommender import save_model
 import json
-from datetime import datetime
+import os
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+os.makedirs("outputs/models", exist_ok=True)
+os.makedirs("outputs/predictions", exist_ok=True)
 model_path = f"outputs/models/model_{timestamp}.pkl"
 predictions_path = f"outputs/predictions/predictions_{timestamp}.parquet"
 metrics_path = f"outputs/metrics_{timestamp}.json"

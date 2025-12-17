@@ -108,6 +108,283 @@ def build_customer_segment_from_step1(
     return customer_segments
 
 
+def _compute_recency_features(
+    candidates: pl.LazyFrame,
+    hist_txns: pl.LazyFrame,
+    end_hist: datetime,
+) -> pl.LazyFrame:
+    """Compute recency features for each customer.
+    
+    Args:
+        candidates: LazyFrame with (customer_id, item_id) pairs.
+        hist_txns: Historical transactions.
+        end_hist: End date of historical window.
+        
+    Returns:
+        LazyFrame with (customer_id, days_since_last_purchase).
+    """
+    last_purchase = (
+        hist_txns
+        .group_by("customer_id")
+        .agg(pl.col("created_date").max().alias("last_purchase_date"))
+        .with_columns(
+            ((pl.lit(end_hist).dt.date() - pl.col("last_purchase_date")).dt.total_days())
+            .cast(pl.Int32)
+            .alias("X4_days_since_last_purchase")
+        )
+        .select(["customer_id", "X4_days_since_last_purchase"])
+    )
+    return last_purchase
+
+
+def _compute_frequency_features(
+    candidates: pl.LazyFrame,
+    hist_txns: pl.LazyFrame,
+) -> pl.LazyFrame:
+    """Compute frequency features for each customer.
+    
+    Args:
+        candidates: LazyFrame with (customer_id, item_id) pairs.
+        hist_txns: Historical transactions.
+        
+    Returns:
+        LazyFrame with (customer_id, purchase_frequency_hist, is_power_user).
+    """
+    freq_features = (
+        hist_txns
+        .group_by("customer_id")
+        .agg([
+            pl.count().alias("num_purchases"),
+            pl.col("created_date").n_unique().alias("days_active")
+        ])
+        .with_columns([
+            (pl.col("num_purchases") / pl.col("days_active").clip(1))
+            .alias("X5_purchase_frequency"),
+            (pl.col("num_purchases") > 13).cast(pl.Int32).alias("X6_is_power_user")
+        ])
+        .select(["customer_id", "X5_purchase_frequency", "X6_is_power_user"])
+    )
+    return freq_features
+
+
+def _compute_monetary_features(
+    candidates: pl.LazyFrame,
+    hist_txns: pl.LazyFrame,
+) -> pl.LazyFrame:
+    """Compute monetary/basket features for each customer.
+    
+    Args:
+        candidates: LazyFrame with (customer_id, item_id) pairs.
+        hist_txns: Historical transactions.
+        
+    Returns:
+        LazyFrame with (customer_id, avg_items_per_purchase).
+    """
+    monetary_features = (
+        hist_txns
+        .group_by("customer_id")
+        .agg([
+            pl.col("item_id").n_unique().alias("total_unique_items"),
+            pl.col("created_date").n_unique().alias("num_purchase_days")
+        ])
+        .with_columns(
+            (pl.col("total_unique_items") / pl.col("num_purchase_days").clip(1))
+            .alias("X7_avg_items_per_purchase")
+        )
+        .select(["customer_id", "X7_avg_items_per_purchase"])
+    )
+    return monetary_features
+
+
+def _compute_brand_loyalty_features(
+    candidates: pl.LazyFrame,
+    hist_txns: pl.LazyFrame,
+    items: pl.LazyFrame,
+) -> pl.LazyFrame:
+    """Compute brand loyalty features for each customer.
+    
+    Args:
+        candidates: LazyFrame with (customer_id, item_id) pairs.
+        hist_txns: Historical transactions.
+        items: Item metadata.
+        
+    Returns:
+        LazyFrame with (customer_id, top_brand_ratio, brand_diversity).
+    """
+    hist_with_brands = hist_txns.join(
+        items.select(["item_id", "brand"]),
+        on="item_id",
+        how="left"
+    )
+    
+    # Top brand ratio
+    brand_counts = (
+        hist_with_brands
+        .group_by(["customer_id", "brand"])
+        .agg(pl.count().alias("brand_count"))
+    )
+    
+    total_purchases = (
+        hist_with_brands
+        .group_by("customer_id")
+        .agg(pl.count().alias("total_purchases"))
+    )
+    
+    top_brand = (
+        brand_counts
+        .sort(["customer_id", "brand_count"], descending=[False, True])
+        .group_by("customer_id")
+        .agg(pl.col("brand_count").first().alias("top_brand_count"))
+    )
+    
+    brand_features = (
+        top_brand
+        .join(total_purchases, on="customer_id", how="left")
+        .with_columns([
+            (pl.col("top_brand_count") / pl.col("total_purchases"))
+            .alias("X8_top_brand_ratio")
+        ])
+    )
+    
+    # Brand diversity
+    brand_diversity = (
+        hist_with_brands
+        .group_by("customer_id")
+        .agg(pl.col("brand").n_unique().alias("X9_brand_diversity"))
+    )
+    
+    result = brand_features.join(
+        brand_diversity,
+        on="customer_id",
+        how="left"
+    ).select(["customer_id", "X8_top_brand_ratio", "X9_brand_diversity"])
+    
+    return result
+
+
+def _compute_category_diversity_features(
+    candidates: pl.LazyFrame,
+    hist_txns: pl.LazyFrame,
+    items: pl.LazyFrame,
+) -> pl.LazyFrame:
+    """Compute category diversity features for each customer.
+    
+    Args:
+        candidates: LazyFrame with (customer_id, item_id) pairs.
+        hist_txns: Historical transactions.
+        items: Item metadata.
+        
+    Returns:
+        LazyFrame with (customer_id, category_diversity_score).
+    """
+    hist_with_categories = hist_txns.join(
+        items.select(["item_id", "category"]),
+        on="item_id",
+        how="left"
+    )
+    
+    category_diversity = (
+        hist_with_categories
+        .group_by("customer_id")
+        .agg([
+            pl.col("category").n_unique().alias("unique_categories"),
+            pl.count().alias("total_purchases")
+        ])
+        .with_columns(
+            (pl.col("unique_categories") / pl.col("total_purchases"))
+            .alias("X10_category_diversity_score")
+        )
+        .select(["customer_id", "X10_category_diversity_score"])
+    )
+    
+    return category_diversity
+
+
+def _compute_temporal_features(
+    candidates: pl.LazyFrame,
+    hist_txns: pl.LazyFrame,
+) -> pl.LazyFrame:
+    """Compute temporal pattern features for each customer.
+    
+    Args:
+        candidates: LazyFrame with (customer_id, item_id) pairs.
+        hist_txns: Historical transactions.
+        
+    Returns:
+        LazyFrame with (customer_id, purchase_day_of_week_mode).
+    """
+    temporal_features = (
+        hist_txns
+        .with_columns(
+            pl.col("created_date").dt.weekday().alias("day_of_week")
+        )
+        .group_by(["customer_id", "day_of_week"])
+        .agg(pl.count().alias("day_count"))
+        .sort(["customer_id", "day_count"], descending=[False, True])
+        .group_by("customer_id")
+        .agg(pl.col("day_of_week").first().alias("X11_purchase_day_mode"))
+    )
+    
+    return temporal_features
+
+
+def _compute_cold_start_features(
+    candidates: pl.LazyFrame,
+    hist_txns: pl.LazyFrame,
+    items: pl.LazyFrame,
+) -> pl.LazyFrame:
+    """Compute cold start indicator features.
+    
+    Args:
+        candidates: LazyFrame with (customer_id, item_id) pairs.
+        hist_txns: Historical transactions.
+        items: Item metadata.
+        
+    Returns:
+        LazyFrame with (customer_id, is_new_customer, avg_item_popularity).
+    """
+    # Is new customer
+    customer_purchase_count = (
+        hist_txns
+        .group_by("customer_id")
+        .agg(pl.count().alias("num_purchases"))
+        .with_columns(
+            (pl.col("num_purchases") < 3).cast(pl.Int32).alias("X12_is_new_customer")
+        )
+        .select(["customer_id", "X12_is_new_customer"])
+    )
+    
+    # Item popularity
+    item_popularity = (
+        hist_txns
+        .group_by("item_id")
+        .agg(pl.count().alias("item_popularity"))
+    )
+    
+    # Average item popularity per customer
+    hist_with_popularity = hist_txns.join(
+        item_popularity,
+        on="item_id",
+        how="left"
+    )
+    
+    avg_popularity = (
+        hist_with_popularity
+        .group_by("customer_id")
+        .agg(pl.col("item_popularity").mean().alias("X13_avg_item_popularity"))
+    )
+    
+    result = customer_purchase_count.join(
+        avg_popularity,
+        on="customer_id",
+        how="left"
+    ).with_columns(
+        pl.col("X13_avg_item_popularity").fill_null(0)
+    )
+    
+    return result
+
+
 def build_feature_label_table(
     transactions: pl.LazyFrame,
     items: pl.LazyFrame,
@@ -136,8 +413,12 @@ def build_feature_label_table(
         
     Returns:
         LazyFrame with features and labels per (customer_id, item_id) pair.
-        Output columns: customer_id, item_id, X1_brand_cnt_hist, 
-                       X2_age_group_cnt_hist, X3_category_cnt_hist, Y
+        Output columns: customer_id, item_id, X1-X13 (features), Y (label)
+        Features: X1_brand_cnt_hist, X2_age_group_cnt_hist, X3_category_cnt_hist,
+                 X4_days_since_last_purchase, X5_purchase_frequency, X6_is_power_user,
+                 X7_avg_items_per_purchase, X8_top_brand_ratio, X9_brand_diversity,
+                 X10_category_diversity_score, X11_purchase_day_mode, X12_is_new_customer,
+                 X13_avg_item_popularity, Y
     """
     # Filter transactions for historical window
     hist_txns = transactions.filter(
@@ -157,14 +438,53 @@ def build_feature_label_table(
             hist_txns, recent_txns, items
         )
     
-    # Build features for each candidate
+    # Build basic features for each candidate
     features = _build_candidate_features(candidates, hist_txns, items)
+    
+    # Build additional features (customer-level)
+    recency_features = _compute_recency_features(candidates, hist_txns, end_hist)
+    frequency_features = _compute_frequency_features(candidates, hist_txns)
+    monetary_features = _compute_monetary_features(candidates, hist_txns)
+    brand_loyalty_features = _compute_brand_loyalty_features(candidates, hist_txns, items)
+    category_diversity_features = _compute_category_diversity_features(candidates, hist_txns, items)
+    temporal_features = _compute_temporal_features(candidates, hist_txns)
+    cold_start_features = _compute_cold_start_features(candidates, hist_txns, items)
+    
+    # Join all customer-level features using left joins to avoid suffix issues
+    customer_features = (
+        recency_features
+        .join(frequency_features, on="customer_id", how="left")
+        .join(monetary_features, on="customer_id", how="left")
+        .join(brand_loyalty_features, on="customer_id", how="left")
+        .join(category_diversity_features, on="customer_id", how="left")
+        .join(temporal_features, on="customer_id", how="left")
+        .join(cold_start_features, on="customer_id", how="left")
+    )
+    
+    # Join with candidate features
+    features_all = features.join(
+        customer_features,
+        on="customer_id",
+        how="left"
+    )
+    
+    # Fill nulls for all feature columns
+    feature_cols = [
+        "X4_days_since_last_purchase", "X5_purchase_frequency", "X6_is_power_user",
+        "X7_avg_items_per_purchase", "X8_top_brand_ratio", "X9_brand_diversity",
+        "X10_category_diversity_score", "X11_purchase_day_mode", "X12_is_new_customer",
+        "X13_avg_item_popularity"
+    ]
+    
+    features_all = features_all.with_columns([
+        pl.col(col).fill_null(0) for col in feature_cols
+    ])
     
     # Build labels
     labels = _build_labels_for_features(recent_txns)
     
     # Join features with labels
-    result = features.join(
+    result = features_all.join(
         labels,
         on=["customer_id", "item_id"],
         how="left"

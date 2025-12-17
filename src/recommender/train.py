@@ -18,7 +18,7 @@ except ImportError:
 
 
 def train_model(
-    feature_label_table: pl.LazyFrame,
+    feature_label_table: Union[pl.DataFrame, pl.LazyFrame],
     feature_columns: List[str],
     label_column: str = "Y",
     model_type: Literal["logistic", "lightgbm"] = "logistic",
@@ -30,7 +30,7 @@ def train_model(
     Supports LogisticRegression (scikit-learn) or LightGBM.
     
     Args:
-        feature_label_table: LazyFrame with features and labels.
+        feature_label_table: DataFrame or LazyFrame with features and labels.
         feature_columns: List of column names to use as features.
         label_column: Name of the label column (default: "Y").
         model_type: Type of model ("logistic" or "lightgbm").
@@ -40,9 +40,12 @@ def train_model(
     Returns:
         Trained model (LogisticRegression or LightGBM Booster).
     """
-    # Collect data
-    print("Collecting data...")
-    df = feature_label_table.collect()
+    # Collect data if LazyFrame
+    if isinstance(feature_label_table, pl.LazyFrame):
+        print("Collecting data...")
+        df = feature_label_table.collect()
+    else:
+        df = feature_label_table
     
     # Prepare features and labels
     X = df.select(feature_columns).to_numpy()
@@ -111,7 +114,7 @@ def train_model(
 
 def predict_and_rank(
     model: Union[LogisticRegression, "lgb.Booster"],
-    feature_label_table: pl.LazyFrame,
+    feature_label_table: Union[pl.DataFrame, pl.LazyFrame],
     feature_columns: List[str],
     user_col: str = "customer_id",
     item_col: str = "item_id",
@@ -121,7 +124,7 @@ def predict_and_rank(
     
     Args:
         model: Trained model (LogisticRegression or LightGBM Booster).
-        feature_label_table: LazyFrame with features for prediction.
+        feature_label_table: DataFrame or LazyFrame with features for prediction.
         feature_columns: List of feature column names.
         user_col: Name of the user ID column.
         item_col: Name of the item ID column.
@@ -130,9 +133,12 @@ def predict_and_rank(
     Returns:
         DataFrame with user, item, and prediction score, ranked per user.
     """
-    # Collect data
-    print("Collecting data for prediction...")
-    df = feature_label_table.collect()
+    # Collect data if LazyFrame
+    if isinstance(feature_label_table, pl.LazyFrame):
+        print("Collecting data for prediction...")
+        df = feature_label_table.collect()
+    else:
+        df = feature_label_table
     
     # Get features
     X = df.select(feature_columns).to_numpy()
