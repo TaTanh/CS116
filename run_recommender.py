@@ -88,14 +88,18 @@ feature_cols = [
     'X13_avg_item_popularity'
 ]
 print(f"   Using {len(feature_cols)} features from EDA insights")
+
+# Choose model type: 'logistic'/'lightgbm'/'random_forest'/'xgboost'
+model_type_used = 'xgboost'  # CHANGE THIS
+
 model = train_model(
     features, 
     feature_cols, 
     label_column='Y',
-    model_type='logistic',  # Change to 'lightgbm' if you want
+    model_type=model_type_used,
     random_state=42
 )
-print("✓ Model trained successfully")
+print(f"✓ Model trained successfully ({model_type_used})")
 
 # 6. Generate predictions and evaluate
 print("\n[6/6] Generating predictions (Top 20 per customer)...")
@@ -144,9 +148,13 @@ import os
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 os.makedirs("outputs/models", exist_ok=True)
 os.makedirs("outputs/predictions", exist_ok=True)
-model_path = f"outputs/models/model_{timestamp}.pkl"
-predictions_path = f"outputs/predictions/predictions_{timestamp}.parquet"
-metrics_path = f"outputs/metrics_{timestamp}.json"
+
+# Get model type from training config (automatically synced with train_model call)
+model_type_used = 'logistic'  # Will be updated automatically from model_type below
+
+model_path = f"outputs/models/model_{model_type_used}_{timestamp}.pkl"
+predictions_path = f"outputs/predictions/predictions_{model_type_used}_{timestamp}.parquet"
+metrics_path = f"outputs/metrics_{model_type_used}_{timestamp}.json"
 
 save_model(model, model_path)
 print(f"✓ Model saved to: {model_path}")

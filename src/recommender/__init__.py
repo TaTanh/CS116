@@ -17,7 +17,7 @@ from .candidates import (
     generate_candidates_from_cooc,
 )
 from .metrics import precision_at_k, ndcg_at_k
-from .train import train_model, predict_and_rank, evaluate_ranking, save_model, load_model
+from .train import train_model, predict_and_rank, evaluate_ranking, save_model, load_model, get_feature_importance
 
 __all__ = [
     # Config
@@ -50,4 +50,5 @@ __all__ = [
     "evaluate_ranking",
     "save_model",
     "load_model",
+    "get_feature_importance",
 ]

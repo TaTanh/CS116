@@ -8,6 +8,7 @@ from typing import Any, Optional, Union, Literal, List, Dict
 import numpy as np
 import polars as pl
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
 try:
@@ -16,18 +17,24 @@ try:
 except ImportError:
     LIGHTGBM_AVAILABLE = False
 
+try:
+    import xgboost as xgb
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+
 
 def train_model(
     feature_label_table: Union[pl.DataFrame, pl.LazyFrame],
     feature_columns: List[str],
     label_column: str = "Y",
-    model_type: Literal["logistic", "lightgbm"] = "logistic",
+    model_type: Literal["logistic", "random_forest", "xgboost", "lightgbm"] = "logistic",
     model_params: Optional[Dict[str, Any]] = None,
     random_state: int = 42,
-) -> Union[LogisticRegression, "lgb.Booster"]:
+) -> Union[LogisticRegression, RandomForestClassifier, "xgb.Booster", "lgb.Booster"]:
     """Train a classification model for purchase prediction.
     
-    Supports LogisticRegression (scikit-learn) or LightGBM.
+    Supports LogisticRegression, Random Forest, XGBoost, or LightGBM.
     
     Args:
         feature_label_table: DataFrame or LazyFrame with features and labels.
@@ -67,6 +74,51 @@ def train_model(
         print("Training Logistic Regression...")
         model = LogisticRegression(**model_params)
         model.fit(X, y)
+        
+        train_score = model.score(X, y)
+        print(f"Training accuracy: {train_score:.4f}")
+        
+    elif model_type == "random_forest":
+        # Train Random Forest
+        if model_params is None:
+            model_params = {
+                "n_estimators": 100,
+                "max_depth": 10,
+                "min_samples_split": 5,
+                "min_samples_leaf": 2,
+                "random_state": random_state,
+                "n_jobs": -1,
+                "verbose": 1,
+            }
+        
+        print("Training Random Forest...")
+        model = RandomForestClassifier(**model_params)
+        model.fit(X, y)
+        
+        train_score = model.score(X, y)
+        print(f"Training accuracy: {train_score:.4f}")
+        
+    elif model_type == "xgboost":
+        if not XGBOOST_AVAILABLE:
+            raise ImportError("XGBoost is not available. Install with: pip install xgboost")
+        
+        # Default parameters
+        if model_params is None:
+            model_params = {
+                "objective": "binary:logistic",
+                "eval_metric": "auc",
+                "max_depth": 6,
+                "learning_rate": 0.05,
+                "n_estimators": 100,
+                "subsample": 0.8,
+                "colsample_bytree": 0.8,
+                "random_state": random_state,
+                "n_jobs": -1,
+            }
+        
+        print("Training XGBoost model...")
+        model = xgb.XGBClassifier(**model_params)
+        model.fit(X, y, verbose=True)
         
         train_score = model.score(X, y)
         print(f"Training accuracy: {train_score:.4f}")
@@ -145,9 +197,14 @@ def predict_and_rank(
     
     # Predict
     print("Generating predictions...")
-    if isinstance(model, LogisticRegression):
+    if isinstance(model, (LogisticRegression, RandomForestClassifier)):
         predictions = model.predict_proba(X)[:, 1]  # Probability of positive class
-    else:  # LightGBM
+    elif XGBOOST_AVAILABLE and isinstance(model, xgb.XGBClassifier):
+        predictions = model.predict_proba(X)[:, 1]  # Probability of positive class
+    elif XGBOOST_AVAILABLE and isinstance(model, xgb.Booster):
+        dmatrix = xgb.DMatrix(X)
+        predictions = model.predict(dmatrix)
+    else:  # LightGBM Booster
         predictions = model.predict(X)
     
     # Add predictions to dataframe
@@ -340,6 +397,16 @@ def get_feature_importance(
     if isinstance(model, LogisticRegression):
         # For logistic regression, use absolute coefficients
         importance = np.abs(model.coef_[0])
+    elif isinstance(model, RandomForestClassifier):
+        # For Random Forest, use feature_importances_
+        importance = model.feature_importances_
+    elif XGBOOST_AVAILABLE and isinstance(model, xgb.XGBClassifier):
+        # For XGBoost classifier
+        importance = model.feature_importances_
+    elif XGBOOST_AVAILABLE and isinstance(model, xgb.Booster):
+        # For XGBoost booster
+        importance_dict = model.get_score(importance_type='gain')
+        importance = np.array([importance_dict.get(f, 0.0) for f in feature_names])
     else:  # LightGBM
         importance = model.feature_importance(importance_type=importance_type)
     
