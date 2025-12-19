@@ -90,7 +90,7 @@ feature_cols = [
 print(f"   Using {len(feature_cols)} features from EDA insights")
 
 # Choose model type: 'logistic'/'lightgbm'/'random_forest'/'xgboost'
-model_type_used = 'random_forest'  # CHANGE THIS
+model_type_used = 'logistic'  # CHANGE THIS TO: 'lightgbm', 'xgboost', 'random_forest'
 
 model = train_model(
     features, 
@@ -149,8 +149,8 @@ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 os.makedirs("outputs/models", exist_ok=True)
 os.makedirs("outputs/predictions", exist_ok=True)
 
-# Get model type from training config (automatically synced with train_model call)
-model_type_used = 'logistic'  # Will be updated automatically from model_type below
+# Use the same model_type_used from training (already defined above)
+# No need to redefine it here
 
 model_path = f"outputs/models/model_{model_type_used}_{timestamp}.pkl"
 predictions_path = f"outputs/predictions/predictions_{model_type_used}_{timestamp}.parquet"

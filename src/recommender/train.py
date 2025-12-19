@@ -234,9 +234,9 @@ def predict_and_rank(
     # Rank items per user by score descending
     result = result.sort([user_col, "score"], descending=[False, True])
     
-    # Add rank column
+    # Add rank column based on score (not item_id!)
     result = result.with_columns(
-        pl.col(item_col).rank("dense").over(user_col).alias("rank")
+        pl.col("score").rank("ordinal", descending=True).over(user_col).alias("rank")
     )
     
     # Filter top K if specified
