@@ -23,12 +23,12 @@ print(f"Models: {', '.join(models_to_train)}")
 # Check if features already exist
 features_cache = "outputs/temp/features_cache.parquet"
 if os.path.exists(features_cache):
-    print(f"\n✓ Using cached features from {features_cache}")
+    print(f"\nUsing cached features from {features_cache}")
     print("  Loading features...")
     features = pl.read_parquet(features_cache)
     print(f"  Features loaded: {features.shape}")
 else:
-    print("\n⚠️  No cached features found. Building features first...")
+    print("\nNo cached features found. Building features first...")
     print("  This will take 10-15 minutes...")
     
     # Load data
@@ -36,7 +36,7 @@ else:
     transactions = load_transactions()
     items = load_items()
     users = load_users()
-    print("✓ Data schemas loaded")
+    print("Data schemas loaded")
     
     # Define time windows (Option 3: Use maximum data)
     print("\n[2] Defining time windows (Option 3)...")
@@ -44,8 +44,8 @@ else:
     end_hist = datetime(2024, 11, 1)      # Extended to Nov (more data)
     begin_recent = datetime(2024, 11, 1)
     end_recent = datetime(2024, 12, 1)    # Predict Dec purchases
-    print(f"✓ Hist: {begin_hist.date()} to {end_hist.date()}")
-    print(f"✓ Recent: {begin_recent.date()} to {end_recent.date()}")
+    print(f"Hist: {begin_hist.date()} to {end_hist.date()}")
+    print(f"Recent: {begin_recent.date()} to {end_recent.date()}")
     
     # Sample customers (20%)
     print("\n[3] Sampling 20% customers...")
@@ -67,12 +67,12 @@ else:
     
     print("\n[5] Collecting features with STREAMING...")
     features = features_lazy.collect(streaming=True)
-    print(f"✓ Features: {features.shape}")
+    print(f"Features: {features.shape}")
     
     # Cache features
     os.makedirs("outputs/temp", exist_ok=True)
     features.write_parquet(features_cache)
-    print(f"✓ Features cached to {features_cache}")
+    print(f"Features cached to {features_cache}")
 
 # Feature columns
 feature_cols = [
@@ -113,7 +113,7 @@ for model_type in models_to_train:
             model_type=model_type,
             random_state=42
         )
-        print(f"✓ {model_type} trained successfully")
+        print(f"{model_type} trained successfully")
         
         # Generate predictions
         print(f"\n[2/{len(models_to_train)}] Generating predictions...")
@@ -123,7 +123,7 @@ for model_type in models_to_train:
             feature_columns=feature_cols,
             top_k=20
         )
-        print(f"✓ Predictions: {predictions.shape}")
+        print(f"Predictions: {predictions.shape}")
         
         # Evaluate
         print(f"\n[3/{len(models_to_train)}] Evaluating...")
@@ -154,12 +154,12 @@ for model_type in models_to_train:
         with open(metrics_path, "w") as f:
             json.dump(metrics, f, indent=2)
         
-        print(f"✓ Model saved: {model_path}")
-        print(f"✓ Predictions saved: {predictions_path}")
-        print(f"✓ Metrics saved: {metrics_path}")
+        print(f"Model saved: {model_path}")
+        print(f"Predictions saved: {predictions_path}")
+        print(f"Metrics saved: {metrics_path}")
         
     except Exception as e:
-        print(f"\n❌ Error training {model_type}: {str(e)}")
+        print(f"\nERROR training {model_type}: {str(e)}")
         import traceback
         traceback.print_exc()
         all_results[model_type] = {"error": str(e)}
@@ -172,15 +172,11 @@ print("="*70)
 for model_type, result in all_results.items():
     print(f"\n{model_type.upper()}:")
     if "error" in result:
-        print(f"  ❌ Failed: {result['error']}")
+        print(f"  FAILED: {result['error']}")
     else:
         for metric_name, values in result.items():
             print(f"  {metric_name}@10: {values.get(10, 'N/A'):.4f}")
 
 print("\n" + "="*70)
-print("✓ ALL DONE!")
+print("ALL DONE!")
 print("="*70)
-print("\nNext steps:")
-print("1. Compare metrics across all 4 models (including logistic)")
-print("2. Choose the best performing model")
-print("3. Generate submission JSON for the best model")

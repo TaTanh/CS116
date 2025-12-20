@@ -83,7 +83,7 @@ def train_model(
         # Sample 20% of data if > 10M samples
         if X.shape[0] > 10_000_000:
             sample_size = int(X.shape[0] * 0.2)
-            print(f"⚠️  Random Forest: Sampling {sample_size:,} samples (20%) to prevent memory crash...")
+            print(f"Random Forest - Sampling {sample_size:,} samples (20%) to prevent memory crash...")
             np.random.seed(random_state)
             indices = np.random.choice(X.shape[0], sample_size, replace=False)
             X_sampled = X[indices]

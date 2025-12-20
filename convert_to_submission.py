@@ -72,9 +72,9 @@ print(f"\n[4] Saving to {output_file}...")
 with open(output_file, "w") as f:
     json.dump(submission_dict, f, indent=2)
 
-print(f"✓ Submission file created: {output_file}")
-print(f"✓ Best model: LightGBM (Precision@10: 0.0408, NDCG@10: 0.1182)")
-print(f"✓ Ready to upload to teacher's website!")
+print(f"Submission file created: {output_file}")
+print(f"Best model: LightGBM (Precision@10: 0.0408, NDCG@10: 0.1182)")
+print(f"Ready to upload to teacher's website!")
 
 print("\n" + "="*70)
 print("DONE!")

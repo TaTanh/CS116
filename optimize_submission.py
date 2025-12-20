@@ -67,12 +67,12 @@ with open(output_file, "w") as f:
 # Check file size
 import os
 file_size_mb = os.path.getsize(output_file) / (1024 * 1024)
-print(f"✓ File size: {file_size_mb:.2f} MB")
+print(f"File size: {file_size_mb:.2f} MB")
 
 if file_size_mb > 90:
-    print(f"⚠️  Still too large! Consider reducing top-K from 20 to 10-15")
+    print(f"File too large. Consider reducing top-K from 20 to 10-15")
 else:
-    print(f"✓ File size OK for upload!")
+    print(f"File size OK for upload!")
 
 print("\n" + "="*70)
 print("DONE!")
