@@ -8,6 +8,7 @@ from typing import Any, Optional, Union, Literal, List, Dict
 import numpy as np
 import polars as pl
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
 try:
@@ -16,21 +17,27 @@ try:
 except ImportError:
     LIGHTGBM_AVAILABLE = False
 
+try:
+    import xgboost as xgb
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+
 
 def train_model(
-    feature_label_table: pl.LazyFrame,
+    feature_label_table: Union[pl.DataFrame, pl.LazyFrame],
     feature_columns: List[str],
     label_column: str = "Y",
-    model_type: Literal["logistic", "lightgbm"] = "logistic",
+    model_type: Literal["logistic", "random_forest", "xgboost", "lightgbm"] = "logistic",
     model_params: Optional[Dict[str, Any]] = None,
     random_state: int = 42,
-) -> Union[LogisticRegression, "lgb.Booster"]:
+) -> Union[LogisticRegression, RandomForestClassifier, "xgb.Booster", "lgb.Booster"]:
     """Train a classification model for purchase prediction.
     
-    Supports LogisticRegression (scikit-learn) or LightGBM.
+    Supports LogisticRegression, Random Forest, XGBoost, or LightGBM.
     
     Args:
-        feature_label_table: LazyFrame with features and labels.
+        feature_label_table: DataFrame or LazyFrame with features and labels.
         feature_columns: List of column names to use as features.
         label_column: Name of the label column (default: "Y").
         model_type: Type of model ("logistic" or "lightgbm").
@@ -40,9 +47,12 @@ def train_model(
     Returns:
         Trained model (LogisticRegression or LightGBM Booster).
     """
-    # Collect data
-    print("Collecting data...")
-    df = feature_label_table.collect()
+    # Collect data if LazyFrame
+    if isinstance(feature_label_table, pl.LazyFrame):
+        print("Collecting data...")
+        df = feature_label_table.collect()
+    else:
+        df = feature_label_table
     
     # Prepare features and labels
     X = df.select(feature_columns).to_numpy()
@@ -64,6 +74,70 @@ def train_model(
         print("Training Logistic Regression...")
         model = LogisticRegression(**model_params)
         model.fit(X, y)
+        
+        train_score = model.score(X, y)
+        print(f"Training accuracy: {train_score:.4f}")
+        
+    elif model_type == "random_forest":
+        # Random Forest needs less data due to memory constraints
+        # Sample 20% of data if > 10M samples
+        if X.shape[0] > 10_000_000:
+            sample_size = int(X.shape[0] * 0.2)
+            print(f"Random Forest - Sampling {sample_size:,} samples (20%) to prevent memory crash...")
+            np.random.seed(random_state)
+            indices = np.random.choice(X.shape[0], sample_size, replace=False)
+            X_sampled = X[indices]
+            y_sampled = y[indices]
+            print(f"   Sampled data: {X_sampled.shape[0]:,} samples")
+            print(f"   Positive samples: {y_sampled.sum():,} ({y_sampled.mean()*100:.2f}%)")
+        else:
+            X_sampled = X
+            y_sampled = y
+        
+        # Train Random Forest
+        if model_params is None:
+            model_params = {
+                "n_estimators": 50,  # Reduced from 100 to save memory
+                "max_depth": 8,      # Reduced from 10 to save memory
+                "min_samples_split": 20,  # Increased from 5 to speed up
+                "min_samples_leaf": 10,   # Increased from 2 to speed up
+                "random_state": random_state,
+                "n_jobs": -1,
+                "verbose": 1,
+            }
+        
+        print("Training Random Forest...")
+        model = RandomForestClassifier(**model_params)
+        model.fit(X_sampled, y_sampled)
+        
+        # Evaluate on sampled data
+        if X.shape[0] > 10_000_000:
+            train_score = model.score(X_sampled, y_sampled)
+        else:
+            train_score = model.score(X, y)
+        print(f"Training accuracy: {train_score:.4f}")
+        
+    elif model_type == "xgboost":
+        if not XGBOOST_AVAILABLE:
+            raise ImportError("XGBoost is not available. Install with: pip install xgboost")
+        
+        # Default parameters
+        if model_params is None:
+            model_params = {
+                "objective": "binary:logistic",
+                "eval_metric": "auc",
+                "max_depth": 6,
+                "learning_rate": 0.05,
+                "n_estimators": 100,
+                "subsample": 0.8,
+                "colsample_bytree": 0.8,
+                "random_state": random_state,
+                "n_jobs": -1,
+            }
+        
+        print("Training XGBoost model...")
+        model = xgb.XGBClassifier(**model_params)
+        model.fit(X, y, verbose=True)
         
         train_score = model.score(X, y)
         print(f"Training accuracy: {train_score:.4f}")
@@ -111,7 +185,7 @@ def train_model(
 
 def predict_and_rank(
     model: Union[LogisticRegression, "lgb.Booster"],
-    feature_label_table: pl.LazyFrame,
+    feature_label_table: Union[pl.DataFrame, pl.LazyFrame],
     feature_columns: List[str],
     user_col: str = "customer_id",
     item_col: str = "item_id",
@@ -121,7 +195,7 @@ def predict_and_rank(
     
     Args:
         model: Trained model (LogisticRegression or LightGBM Booster).
-        feature_label_table: LazyFrame with features for prediction.
+        feature_label_table: DataFrame or LazyFrame with features for prediction.
         feature_columns: List of feature column names.
         user_col: Name of the user ID column.
         item_col: Name of the item ID column.
@@ -130,18 +204,26 @@ def predict_and_rank(
     Returns:
         DataFrame with user, item, and prediction score, ranked per user.
     """
-    # Collect data
-    print("Collecting data for prediction...")
-    df = feature_label_table.collect()
+    # Collect data if LazyFrame
+    if isinstance(feature_label_table, pl.LazyFrame):
+        print("Collecting data for prediction...")
+        df = feature_label_table.collect()
+    else:
+        df = feature_label_table
     
     # Get features
     X = df.select(feature_columns).to_numpy()
     
     # Predict
     print("Generating predictions...")
-    if isinstance(model, LogisticRegression):
+    if isinstance(model, (LogisticRegression, RandomForestClassifier)):
         predictions = model.predict_proba(X)[:, 1]  # Probability of positive class
-    else:  # LightGBM
+    elif XGBOOST_AVAILABLE and isinstance(model, xgb.XGBClassifier):
+        predictions = model.predict_proba(X)[:, 1]  # Probability of positive class
+    elif XGBOOST_AVAILABLE and isinstance(model, xgb.Booster):
+        dmatrix = xgb.DMatrix(X)
+        predictions = model.predict(dmatrix)
+    else:  # LightGBM Booster
         predictions = model.predict(X)
     
     # Add predictions to dataframe
@@ -152,9 +234,9 @@ def predict_and_rank(
     # Rank items per user by score descending
     result = result.sort([user_col, "score"], descending=[False, True])
     
-    # Add rank column
+    # Add rank column based on score (not item_id!)
     result = result.with_columns(
-        pl.col(item_col).rank("dense").over(user_col).alias("rank")
+        pl.col("score").rank("ordinal", descending=True).over(user_col).alias("rank")
     )
     
     # Filter top K if specified
@@ -334,6 +416,16 @@ def get_feature_importance(
     if isinstance(model, LogisticRegression):
         # For logistic regression, use absolute coefficients
         importance = np.abs(model.coef_[0])
+    elif isinstance(model, RandomForestClassifier):
+        # For Random Forest, use feature_importances_
+        importance = model.feature_importances_
+    elif XGBOOST_AVAILABLE and isinstance(model, xgb.XGBClassifier):
+        # For XGBoost classifier
+        importance = model.feature_importances_
+    elif XGBOOST_AVAILABLE and isinstance(model, xgb.Booster):
+        # For XGBoost booster
+        importance_dict = model.get_score(importance_type='gain')
+        importance = np.array([importance_dict.get(f, 0.0) for f in feature_names])
     else:  # LightGBM
         importance = model.feature_importance(importance_type=importance_type)
     
