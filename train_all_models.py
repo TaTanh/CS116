@@ -47,20 +47,13 @@ else:
     print(f"Hist: {begin_hist.date()} to {end_hist.date()}")
     print(f"Recent: {begin_recent.date()} to {end_recent.date()}")
     
-    # Sample customers (20%)
-    print("\n[3] Sampling 20% customers...")
-    sampled_customers = (
-        transactions
-        .select("customer_id")
-        .unique()
-        .filter((pl.col("customer_id").hash(seed=42) % 5) == 0)
-    )
-    transactions_sampled = transactions.join(sampled_customers, on="customer_id", how="inner")
+    # Use ALL customers (100% - no sampling)
+    print("\n[3] Using ALL customers (no sampling)...")
     
     # Build features
     print("\n[4] Building features...")
     features_lazy = build_feature_label_table(
-        transactions_sampled, items, users,
+        transactions, items, users,
         begin_hist, end_hist,
         begin_recent, end_recent
     )
