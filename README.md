@@ -137,13 +137,23 @@ The system supports 4 classification models:
 
 ## Model Performance
 
+**Latest Results (Dec 21, 2025):**
+
 Best model: **LightGBM (tuned)**
 
-Example metrics:
-- Precision@10: ~15-20%
-- Recall@10: ~8-12%
-- NDCG@10: ~0.18-0.22
-- F1@10: ~0.11-0.15
+**Public Test Score: 6.89%** ⭐
+
+Internal validation metrics (new groundtruth - 644,970 customers):
+- Precision@10: 4.38%
+- Recall@10: 12.30%
+- NDCG@10: 9.62%
+- F1@10: 6.46%
+
+Submission details:
+- Customers: 100,000 (top customers by score)
+- Items per customer: 10
+- File size: 14.33 MB
+- Model: LightGBM trained on 2024 data (Jan-Nov)
 
 ## Development
 
