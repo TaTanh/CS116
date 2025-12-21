@@ -11,26 +11,28 @@
 
 ## 2. KẾT QUẢ
 
-### Precision@10 (Groundtruth)
-**0.0415** (4.15%)
+### Precision@10 (Internal Validation)
+**0.0438** (4.38%)
 
 ### Điểm trên hệ thống của thầy
-**5.24%**
+**6.89%** 
 
 ### Model cuối cùng
-- **LightGBM** với tuned hyperparameters
+- **LightGBM** với tuned hyperparameters (KHÔNG train lại)
 - File: `model_lightgbm_tuned_20251221_103746.pkl`
-- Predictions: `predictions_lightgbm_tuned_20251221_103746.parquet`
+- Predictions: `predictions_new_groundtruth_20251221_222506.parquet`
+- Groundtruth: 644,970 customers (tăng 253,070 customers)
 
 ---
 
 ## 3. FILE PREDICTION
 
 ### File submission
-- **Tên file**: `submission_lightgbm_60pct.json`
-- **Kích thước**: 18.83 MB
+- **Tên file**: `submission_lightgbm_optimized.json`
+- **Kích thước**: 14.33 MB (tối ưu cho upload)
 - **Format**: Dictionary map từ customer_id → list 10 recommended item IDs
-- **Coverage**: 120,000 customers (30.6% groundtruth)
+- **Coverage**: 100,000 customers (top customers by score)
+- **Selection**: Chọn top 100K customers có average prediction score cao nhất
 
 ### Upload lên Google Drive
 1. Upload file `outputs/submission_lightgbm_60pct.json`
@@ -145,9 +147,12 @@
 5. Tăng coverage: 20% → 60% customers → +29% accuracy
 
 **Kết quả cuối:**
-- **Precision@10**: 0.0415 (4.15%)
-- **Điểm thực tế**: 5.24%
-- **Coverage**: 120K/391K customers (30.6%)
+- **Precision@10 (internal)**: 0.0438 (4.38%)
+- **Recall@10 (internal)**: 0.1230 (12.30%)
+- **NDCG@10 (internal)**: 0.0962 (9.62%)
+- **Điểm công khai**: 6.89% 
+- **Groundtruth**: 644,970 customers (NEW)
+- **Submission**: 100,000 customers (top score)
 
 #### Slide 7: KẾT LUẬN & HƯỚNG PHÁT TRIỂN
 
@@ -174,6 +179,7 @@
 
 ## FILE CẦN UPLOAD
 
-1. `submission_lightgbm_60pct.json` (18.83 MB)
-2. Slide PowerPoint/Google Slides
+1. **`submission_lightgbm_optimized.json`** (14.33 MB) - File submission chính
+2. Slide PowerPoint/Google Slides (5 phút trình bày)
 3. (Optional) Source code nén .zip
+4. (Optional) `BAO_CAO_KET_QUA.md` - Báo cáo chi tiết

@@ -6,10 +6,10 @@
 ```
 Dữ liệu gốc:
 - Thời gian: 01/01/2024 - 31/12/2024
-- Tổng transactions: 36,469,595
-- Tổng customers: 244,265
-- Tổng items: 55,218
-- Avg transactions/customer: 149.3
+- Tổng transactions: ~80,000,000
+- Tổng customers: 644,970 (NEW groundtruth)
+- Tổng items: 55,218+
+- Training period: Jan-Nov 2024 (11 tháng)
 ```
 
 ### 2. Time Split Strategy
@@ -26,7 +26,7 @@ Phân chia dữ liệu (Option 3):
 │ 2024-12-01 to 2024-12-31               │
 └─────────────────────────────────────────┘
 
-Predict: January 2025 (391,900 customers)
+Predict: January 2025 (644,970 customers - NEW groundtruth)
 ```
 
 ### 3. Feature Engineering Details
@@ -51,8 +51,10 @@ Top 5 features quan trọng nhất:
 │ Random Forest    │   0.0583    │  0.0388  │  0.1130  │
 │ XGBoost          │   0.0611    │  0.0407  │  0.1181  │
 │ LightGBM (def)   │   0.0620    │  0.0412  │  0.1190  │
-│ LightGBM (tuned) │   0.0622    │  0.0415  │  0.1195  │ (Dùng)
+│ LightGBM (tuned) │   0.0622    │  0.0438  │  0.0962  │ (Dùng)
 └──────────────────┴─────────────┴──────────┴──────────┘
+
+Public test score: 6.89% (trên hệ thống thầy)
 
 Training time:
 - Logistic: ~2 minutes
@@ -158,17 +160,20 @@ Precision@10: 0.0 (0/10 đúng)
 ### 7. Coverage vs Accuracy Trade-off
 
 ```
-Thực nghiệm với số lượng customers:
+Thực nghiệm với số lượng customers (NEW groundtruth):
 
 ┌─────────────┬──────────┬───────────┬──────────┐
-│ % Customers │ Coverage │ File Size │ Accuracy │
+│ Strategy    │ Coverage │ File Size │ Accuracy │
 ├─────────────┼──────────┼───────────┼──────────┤
-│     20%     │   63K    │   10 MB   │  4.02%   │
-│     60%     │  120K    │   19 MB   │  5.24%   │ 
-│    100%     │  190K    │   30 MB   │  ~5.8%   │ (ước)
+│ All preds   │  463K    │   29 MB   │  ~5.5%   │
+│ Top 100K    │  100K    │   14 MB   │  6.89%   │ ✓
+│ Top 50K     │   50K    │    8 MB   │  ~7.2%   │ (ước)
 └─────────────┴──────────┴───────────┴──────────┘
 
-→ Chọn 60% để cân bằng file size và accuracy
+→ Chọn top 100K customers (theo avg score) để:
+  • File size phù hợp (14.33 MB)
+  • Focus vào predictions tốt nhất
+  • Đạt 6.89% accuracy
 ```
 
 ### 8. Error Analysis
