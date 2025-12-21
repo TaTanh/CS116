@@ -173,6 +173,9 @@ def _compute_monetary_features(
 ) -> pl.LazyFrame:
     """Compute monetary/basket features for each customer.
     
+    Computes X7_avg_items_per_purchase = total_items / num_orders
+    This represents the average number of items per order/purchase.
+    
     Args:
         candidates: LazyFrame with (customer_id, item_id) pairs.
         hist_txns: Historical transactions.
@@ -184,11 +187,11 @@ def _compute_monetary_features(
         hist_txns
         .group_by("customer_id")
         .agg([
-            pl.col("item_id").n_unique().alias("total_unique_items"),
-            pl.col("created_date").n_unique().alias("num_purchase_days")
+            pl.count().alias("total_items"),  # Total number of items purchased
+            pl.col("order_id").n_unique().alias("num_orders")  # Number of unique orders
         ])
         .with_columns(
-            (pl.col("total_unique_items") / pl.col("num_purchase_days").clip(1))
+            (pl.col("total_items") / pl.col("num_orders").clip(1))
             .alias("X7_avg_items_per_purchase")
         )
         .select(["customer_id", "X7_avg_items_per_purchase"])
