@@ -19,9 +19,9 @@ with open("groundtruth.pkl", "rb") as f:
 valid_customers = set(groundtruth.keys())
 print(f"Valid customers in groundtruth: {len(valid_customers):,}")
 
-# 2. Load predictions
+# 2. Load predictions (NEW - 60% customers model)
 print("\n[2] Loading predictions...")
-predictions_file = "outputs/predictions/predictions_lightgbm_20251219_213020.parquet"
+predictions_file = "outputs/predictions/predictions_lightgbm_tuned_20251221_103746.parquet"
 predictions_df = pl.read_parquet(predictions_file)
 print(f"Total predictions: {predictions_df.shape[0]:,}")
 print(f"Total customers: {predictions_df['customer_id'].n_unique():,}")
@@ -34,8 +34,24 @@ predictions_filtered = predictions_df.filter(
 print(f"Filtered predictions: {predictions_filtered.shape[0]:,}")
 print(f"Filtered customers: {predictions_filtered['customer_id'].n_unique():,}")
 
-# 4. Convert to submission format (compact)
-print("\n[4] Converting to compact JSON format...")
+# 3.5. Select TOP customers by average score (to reduce file size)
+print("\n[3.5] Selecting TOP 190K customers by avg score...")
+customer_avg_scores = (
+    predictions_filtered
+    .group_by("customer_id")
+    .agg(pl.col("score").mean().alias("avg_score"))
+    .sort("avg_score", descending=True)
+)
+top_n = min(190000, customer_avg_scores.shape[0])
+top_customers = set(customer_avg_scores.head(top_n)["customer_id"].to_list())
+print(f"Selected top {len(top_customers):,} customers")
+
+predictions_filtered = predictions_filtered.filter(
+    pl.col("customer_id").is_in(list(top_customers))
+)
+
+# 4. Convert to submission format (compact - TOP 20 items)
+print("\n[4] Converting to compact JSON format (TOP 20 items)...")
 submission_dict = {}
 
 for customer_id in predictions_filtered["customer_id"].unique():
@@ -43,11 +59,12 @@ for customer_id in predictions_filtered["customer_id"].unique():
     if customer_id not in valid_customers:
         continue
     
-    # Get top-K items for this customer
+    # Get top-20 items for this customer
     customer_items = (
         predictions_filtered
         .filter(pl.col("customer_id") == customer_id)
         .sort("rank")
+        .head(20)  # TOP 20
         .select("item_id")
         .to_series()
         .to_list()
@@ -58,8 +75,8 @@ for customer_id in predictions_filtered["customer_id"].unique():
 
 print(f"Submission customers: {len(submission_dict):,}")
 
-# 5. Save with NO indent (compact format)
-output_file = "outputs/submission_lightgbm_optimized.json"
+# 5. Save with NO indent (compact final
+output_file = "outputs/submission_lightgbm_60pct.json"
 print(f"\n[5] Saving compact JSON to {output_file}...")
 with open(output_file, "w") as f:
     json.dump(submission_dict, f, separators=(',', ':'))  # No spaces, no indent
