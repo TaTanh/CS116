@@ -59,12 +59,12 @@ for customer_id in predictions_filtered["customer_id"].unique():
     if customer_id not in valid_customers:
         continue
     
-    # Get top-10 items for this customer (reduced from 20)
+    # Get top-10 items for this customer
     customer_items = (
         predictions_filtered
         .filter(pl.col("customer_id") == customer_id)
         .sort("rank")
-        .head(10)  # TOP 10 (reduced from 20)
+        .head(10)  # TOP 10
         .select("item_id")
         .to_series()
         .to_list()

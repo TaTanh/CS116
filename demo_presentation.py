@@ -187,18 +187,4 @@ print(f"""
 Model: LightGBM (Tuned Hyperparameters)
 Training Data: 168M samples, 13 features
 Test Set: {format_number(len(groundtruth))} customers
-
-Metrics (Validation Set):
-  Precision@5:  6.22%
-  Precision@10: 4.15%
-  Precision@20: 2.75%
-  NDCG@10: 0.1195
-
-Real-world Performance (Teacher's Platform):
-  Score: 5.24%
-
-Key Insights:
-  ✓ Model works EXCELLENT for brand-loyal customers (70-80% precision)
-  ✓ Model struggles with diverse/unpredictable shoppers (<10% precision)
-  ✓ Coverage: 120K/{format_number(len(groundtruth))} customers (30.6%)
 """)
