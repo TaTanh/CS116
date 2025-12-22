@@ -6,6 +6,48 @@
 - Nói về **quá trình thử nghiệm**, không chỉ kết quả cuối
 
 ---
+# CÁC CÂU HỎI VỀ FEATURE
+
+## CÁCH TẠO RA CÁC FEATURES : 
+
+> **X4_days_since_last_purchase**: Trong _compute_recency_features, lấy ngày mua gần nhất của mỗi khách trong hist_txns, rồi trừ khỏi end_hist để ra số ngày kể từ lần mua cuối, cast về Int32.
+> **X5_purchase_frequency**: Trong _compute_frequency_features, đếm tổng số giao dịch và số ngày có giao dịch (created_date.n_unique), rồi chia num_purchases / days_active (clip days_active ≥1) để ra tần suất mua.
+> **X6_is_power_user**: Cũng trong _compute_frequency_features, đặt cờ 1 nếu num_purchases > 13, ngược lại 0.
+> **X7_avg_items_per_purchase**: Trong _compute_monetary_features, tính total_unique_items và num_purchase_days (số ngày có giao dịch), rồi lấy total_unique_items / num_purchase_days (clip ≥1) để ra trung bình item/đơn.
+> **X8_top_brand_ratio**: Trong _compute_brand_loyalty_features, đếm số lần mua từng brand cho mỗi khách, lấy brand_count cao nhất (top_brand_count), chia cho total_purchases để ra tỷ lệ brand ưa thích.
+> **X9_brand_diversity**: Cũng trong _compute_brand_loyalty_features, đếm số brand duy nhất mỗi khách đã mua (n_unique(brand)).
+> **X10_category_diversity_score**: Trong _compute_category_diversity_features, đếm số category duy nhất và tổng số lần mua, rồi tính unique_categories / total_purchases.
+> **X11_purchase_day_mode**: Trong _compute_temporal_features, lấy weekday của created_date, đếm tần suất, sắp xếp giảm dần và lấy weekday xuất hiện nhiều nhất (mode) cho mỗi khách.
+> **X12_is_new_customer**: Trong _compute_cold_start_features, đếm num_purchases của mỗi khách; cờ 1 nếu < 3, ngược lại 0.
+> **X13_avg_item_popularity**: Vẫn trong _compute_cold_start_features, tính item_popularity = số lần mỗi item xuất hiện trong lịch sử; join vào lịch sử của khách và lấy trung bình item_popularity trên các item họ mua. Null được fill 0.
+
+## LÀM SAO ĐỂ TÌM RA CÁC NGƯỠNG PHÙ HỢP CHO **X12_is_new_customer** VÀ **X6_is_power_user**
+
+> Số liệu tỉ lệ phân trăm từng số lượng giao dịch/khách hàng:
+"1" 25.14       "2" 14.3        "3" 8.71        "4" 6.16
+"5" 4.59        "6" 3.63        "7" 2.91        "8" 2.43
+"9" 2.06        "10" 1.81       "11" 1.58       "12" 1.41
+"13" 1.24       "14" 1.13       "15" 1.02       ">15" 21.88
+
+> 1) “New customer” (≤2 giao dịch)
+
+Phân bố: 1 giao dịch = 25.14%, 2 giao dịch = 14.30% → tổng 39.44%.
+Mục tiêu: Nhận diện nhóm thật sự thiếu lịch sử (cold-start) để:
+Tăng tỷ trọng gợi ý phổ biến/an toàn (popular items).
+Giảm phụ thuộc vào co-occurrence/history (vì gần như không có).
+Nếu mở rộng lên 3 giao dịch (≤3), nhóm “new” sẽ còn rộng hơn (~48.15%), dễ làm loãng tín hiệu cold-start và có thể quá bảo thủ. Nếu thu hẹp xuống đúng 1 giao dịch (25.14%), thì quá hẹp, bỏ sót một phần khách mới chỉ mới quay lại lần thứ hai.
+> 2) “Power user” (≥15 giao dịch)
+
+Phân bố: >15 giao dịch = 21.88%, 13–15 = 3.39% → nếu lấy ≥15, giữ ~21.88% (gần top 20% khách hoạt động mạnh).
+Mục tiêu: Nhận diện nhóm mua nhiều/ổn định để:
+Đẩy mạnh gợi ý bổ trợ (cross-sell) và combo (co-occurrence cao).
+Tận dụng loyalty/category patterns vì nhóm này có hành vi rõ ràng.
+Nếu hạ xuống ≥13, nhóm power ~25.27% (13–15 + >15), hơi rộng; signal “power” giảm sắc nét. Chọn ≥15 bám sát top 20%, cân bằng giữa độ phủ và độ “tinh khiết” của tín hiệu.
+> 3) Tại sao không dùng toàn bộ lịch sử hay ngưỡng khác?
+
+Ngưỡng tĩnh quá thấp cho “power” sẽ pha trộn khách trung bình, làm yếu độ phân biệt.
+Ngưỡng “new” quá cao sẽ dán nhãn “mới” cho cả khách đã có vài phiên mua, khiến mô hình dùng chiến lược cold-start quá mức.
+
 
 ## 1️⃣ TẠI SAO CHỌN 13 FEATURES ĐÓ?
 
@@ -51,6 +93,8 @@
 
 ### CÂU TRẢ LỜI MẪU:
 
+> Trả lời thành thật: tìm hiểu trên mạng, tìm hiểu xem các bài toán tương tự thường dùng các features nào rồi tiếp thu + phân tích trong quá trình EDA.
+
 > "Em làm EDA theo quy trình có hệ thống:
 > 
 > **Bước 1: Exploratory Questions**
@@ -88,7 +132,7 @@ Cell #41-47: Cold-start analysis
     → Features: X12, X13
 ```
 
----
+------------------------------------------
 
 ## 3️⃣ TẠI SAO CHỌN PARAMETERS NHƯ VẬY?
 
@@ -116,30 +160,6 @@ Cell #41-47: Cold-start analysis
 
 ### B. LightGBM Hyperparameters
 
-**CÂU TRẢ LỜI:**
-> "Em tune parameters dựa trên understanding về data:
-> 
-> **1. num_leaves = 63** (tăng từ 31)
-> - Lý do: Dataset lớn (168M samples), cần model phức tạp hơn
-> - Trade-off: Tăng overfitting risk → cần regularization
-> 
-> **2. max_depth = 8** (từ -1 unlimited)
-> - Lý do: Control overfitting
-> - Test: depth=6 (underfit), depth=10 (overfit), depth=8 (best)
-> 
-> **3. learning_rate = 0.03** (giảm từ 0.05)
-> - Lý do: Học chậm hơn nhưng chính xác hơn
-> - Kết hợp với n_estimators=200 (tăng từ 100)
-> - Trade-off: Training time tăng 2x nhưng Precision tăng 0.7%
-> 
-> **4. feature_fraction = 0.8, bagging_fraction = 0.7**
-> - Lý do: Randomization giảm overfitting
-> - Giống Random Forest idea
-> 
-> **5. reg_alpha=0.1, reg_lambda=0.1**
-> - Lý do: L1/L2 regularization
-> - Dataset có nhiều noise → cần regularize"
-
 **VALIDATION PROCESS:**
 ```python
 # Grid search (manual)
@@ -153,7 +173,31 @@ params_grid = {
 # num_leaves=63, max_depth=8, lr=0.03
 # → Precision@10 = 0.0415
 ```
+Các tham số được chọn trong params_grid KHÔNG phải ngẫu nhiên mà có mục đích rõ ràng:
 
+1. **num_leaves**: [31, 63, 127]
+- Đây là số lượng lá tối đa trong mỗi cây
+- Chọn theo công thức: 2^n - 1
+31 = 2^5 - 1 (default của LightGBM)
+63 = 2^6 - 1
+127 = 2^7 - 1
+- Lý do: LightGBM sử dụng leaf-wise tree growth, số lá nên là lũy thừa của 2 trừ 1 để tree cân bằng
+Trade-off: Số lớn hơn → model phức tạp hơn nhưng dễ overfit
+
+2. **max_depth**: [6, 8, 10]
+- Độ sâu tối đa của cây
+- Lý do chọn:
+6: Shallow, phù hợp dataset nhỏ
+8: Sweet spot cho most tabular data (đã chọn)
+10: Deep, cho dataset lớn/phức tạp
+
+3. **learning_rate**: [0.01, 0.03, 0.05]
+Tốc độ học của model
+Lý do chọn:
+0.05: Default LightGBM, fast training
+0.03: Compromise giữa tốc độ và accuracy 
+0.01: Slow nhưng accurate, cần nhiều iterations
+Quy tắc: Learning rate càng nhỏ → cần n_estimators càng lớn
 ---
 
 ## 4️⃣ TẠI SAO CHỌN LIGHTGBM THAY VÌ MODELS KHÁC?
@@ -309,6 +353,35 @@ params_grid = {
 > - Content-based filtering cho cold-start"
 
 ---
+
+## CÁCH CHỌN TẬP CANDIDATE 
+> Em dùng _generate_candidates_for_features() với 3 phương pháp:
+
+> 1. ALL POSITIVES từ Recent (Nov):
+
+Lấy tất cả items customer mua trong recent period
+~600K unique pairs (ground truth để train)
+Mỗi pair được label Y=1
+Tại sao: đảm bảo có positive examples, fix imbalanced data
+> 2. TOP 50 POPULAR ITEMS:
+
+Count purchases per item trong hist (Jan-Oct)
+Lấy top 50 items phổ biến nhất
+Cross join với TẤT CẢ customers 
+Tại sao: giải quyết Cold-start , popular items cover 60-70% transactions
+> 3. CATEGORY-BASED (Max 200/customer):
+
+Tìm categories customer đã mua 
+Lấy ALL items từ các categories đó 
+Random sample max 200 items/customer để control size
+Tại sao: cá nhân hóa dựa trên sở thích, max 200 items để tránh có nhiều items
+> 4. COMBINE & DEDUPLICATE:
+
+Gộp 3 phương pháp lại rồi loại bỏ các items trùng (overlap giữa sources)
+Mỗi customer: ~250-300 unique candidates
+Kết quả:
+Model chỉ cần rank ~250-300 items/customer 
+
 
 ## 9️⃣ NẾU LÀM LẠI, EM SẼ CẢI THIỆN GÌ?
 
