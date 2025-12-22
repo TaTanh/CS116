@@ -2,13 +2,23 @@
 
 ## 📊 KẾT QUẢ CUỐI CÙNG
 
-### Score trên hệ thống thầy: **6.89%**
+### Score trên hệ thống thầy:
+- **WITH History (X1-X13)**: **6.89%**
+- **WITHOUT History (X4-X13)**: **1.35%**
+- **Impact**: -80.4% khi loại bỏ historical features
 
-### Metrics đánh giá nội bộ (trên new groundtruth):
-- **Precision@10**: 4.38%
-- **Recall@10**: 12.30%
-- **NDCG@10**: 9.62%
-- **F1@10**: 6.46%
+### Metrics đánh giá nội bộ (WITH History):
+- **Precision@10**: 4.15%
+- **NDCG@10**: 11.95%
+
+### So sánh WITH vs WITHOUT History:
+
+| Model | Features | Internal P@10 | Web P@10 | Impact |
+|-------|----------|---------------|----------|--------|
+| **WITH history** | X1-X13 | 4.15% | **6.89%** | Baseline |
+| **WITHOUT history** | X4-X13 | 2.17% | **1.35%** | **-80.4%** |
+
+→ **Historical features (X1-X3) CỰC KỲ QUAN TRỌNG!**
 
 ---
 
@@ -90,17 +100,22 @@ python optimize_submission.py
 ## 💡 INSIGHTS VÀ PHÂN TÍCH
 
 ### Điểm mạnh của approach:
-1. **Không cần train lại model**
+1. **Historical features là nền tảng**
+   - X1, X2, X3 chứa thông tin về lịch sử mua hàng
+   - Bỏ 3 features này → giảm 80.4% performance
+   - Chứng minh: Lịch sử quan trọng hơn hành vi gần đây
+
+2. **Không cần train lại model**
    - Tiết kiệm thời gian (5-10 phút vs 1-2 giờ)
    - Tiết kiệm RAM
    - Model cũ (train trên 11 tháng 2024) vẫn rất tốt
 
-2. **Chọn lọc customers thông minh**
+3. **Chọn lọc customers thông minh**
    - Chỉ submit top 100K customers có score cao nhất
    - Tăng precision (focus vào predictions tốt nhất)
    - Giảm file size (dễ upload, dễ xử lý)
 
-3. **Feature engineering đa dạng**
+4. **Feature engineering đa dạng**
    - Kết hợp features về behavior (purchase frequency, recency)
    - Features về preferences (brand, category diversity)
    - Features về popularity (item popularity)
@@ -111,9 +126,10 @@ python optimize_submission.py
 - **Coverage**: 463,340 / 644,970 = 71.8% customers có predictions
 
 ### Kết quả:
-- **Public score**: 6.89%
+- **Public score WITH history**: 6.89%
+- **Public score WITHOUT history**: 1.35%
 - **Tốt hơn random baseline** (< 1%)
-- **Precision@10**: 4.38% → có thể cải thiện bằng ensemble models
+- **Precision@10 internal**: 4.15% (WITH history) vs 2.17% (WITHOUT history)
 
 ---
 

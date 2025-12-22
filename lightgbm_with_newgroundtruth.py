@@ -87,8 +87,7 @@ print(f"Predictions shape: {predictions.shape}")
 print(f"Customers with predictions: {predictions['customer_id'].n_unique():,}")
 
 # 5. Save predictions
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-pred_path = f"outputs/predictions/predictions_new_groundtruth_{timestamp}.parquet"
+pred_path = "outputs/predictions/predictions_lightgbm_with_newgroundtruth.parquet"
 predictions.write_parquet(pred_path)
 print(f"\n[5] Predictions saved to: {pred_path}")
 

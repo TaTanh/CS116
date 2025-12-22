@@ -11,17 +11,20 @@
 
 ## 2. KẾT QUẢ
 
-### Precision@10 (Internal Validation)
-**0.0438** (4.38%)
+### So sánh WITH vs WITHOUT History
 
-### Điểm trên hệ thống của thầy
-**6.89%** 
+| Model | Features | Internal P@10 | **Web P@10** | File Submission |
+|-------|----------|---------------|--------------|------------------|
+| **WITH history** | X1-X13 | 4.15% | **6.89%** ✅ | `submission_13features_tuned.json` |
+| **WITHOUT history** | X4-X13 | 2.17% | **1.35%** ❌ | `submission_without_history.json` |
 
-### Model cuối cùng
-- **LightGBM** với tuned hyperparameters (KHÔNG train lại)
+**Impact:** Loại bỏ historical features → giảm **80.4%** performance
+
+### Model cuối cùng (WITH history)
+- **LightGBM** với tuned hyperparameters
 - File: `model_lightgbm_tuned_20251221_103746.pkl`
-- Predictions: `predictions_new_groundtruth_20251221_222506.parquet`
-- Groundtruth: 644,970 customers (tăng 253,070 customers)
+- Features: 13 features (X1-X13)
+- Groundtruth: 644,970 customers
 
 ---
 
@@ -78,7 +81,7 @@
 | Logistic | 0.0328 | 0.1030 |
 | Random Forest | 0.0388 | 0.1130 |
 | XGBoost | 0.0407 | 0.1181 |
-| **LightGBM (default)** | 0.0412 | 0.1190 |
+| **LightGBM (default)** | 0.0409 | 0.1194 |
 | **LightGBM (tuned)** | **0.0415** | **0.1195** |
 
 #### Slide 4: CÁC ĐẶC TRƯNG (13 FEATURES)
@@ -147,10 +150,10 @@
 5. Tăng coverage: 20% → 60% customers → +29% accuracy
 
 **Kết quả cuối:**
-- **Precision@10 (internal)**: 0.0438 (4.38%)
-- **Recall@10 (internal)**: 0.1230 (12.30%)
-- **NDCG@10 (internal)**: 0.0962 (9.62%)
-- **Điểm công khai**: 6.89% 
+- **Precision@10 (internal WITH history)**: 4.15%
+- **NDCG@10 (internal WITH history)**: 11.95%
+- **Điểm công khai WITH history**: 6.89% 
+- **Điểm công khai WITHOUT history**: 1.35%
 - **Groundtruth**: 644,970 customers (NEW)
 - **Submission**: 100,000 customers (top score)
 
