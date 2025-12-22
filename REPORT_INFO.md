@@ -11,17 +11,20 @@
 
 ## 2. KẾT QUẢ
 
-### Precision@10 (Internal Validation)
-**0.0438** (4.38%)
+### So sánh WITH vs WITHOUT History
 
-### Điểm trên hệ thống của thầy
-**6.89%** 
+| Model | Features | Internal P@10 | **Web P@10** | File Submission |
+|-------|----------|---------------|--------------|------------------|
+| **WITH history** | X1-X13 | 4.15% | **6.89%** ✅ | `submission_13features_tuned.json` |
+| **WITHOUT history** | X4-X13 | 2.17% | **1.35%** ❌ | `submission_without_history.json` |
 
-### Model cuối cùng
-- **LightGBM** với tuned hyperparameters (KHÔNG train lại)
+**Impact:** Loại bỏ historical features → giảm **80.4%** performance
+
+### Model cuối cùng (WITH history)
+- **LightGBM** với tuned hyperparameters
 - File: `model_lightgbm_tuned_20251221_103746.pkl`
-- Predictions: `predictions_new_groundtruth_20251221_222506.parquet`
-- Groundtruth: 644,970 customers (tăng 253,070 customers)
+- Features: 13 features (X1-X13)
+- Groundtruth: 644,970 customers
 
 ---
 

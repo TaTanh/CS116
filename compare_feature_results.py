@@ -13,7 +13,7 @@ print("FEATURE COMPARISON - LIGHTGBM MODELS")
 print("="*80)
 
 # Find all metrics files
-metrics_pattern = "outputs/metrics_lightgbm_*features_*.json"
+metrics_pattern = "outputs/metrics_lightgbm_*.json"
 metrics_files = glob(metrics_pattern)
 
 if not metrics_files:
@@ -22,6 +22,7 @@ if not metrics_files:
     print("  - python train_lightgbm_3features.py")
     print("  - python train_lightgbm_5features.py")
     print("  - python train_lightgbm_9features.py")
+    print("  - python train_lightgbm_without_history.py")
     exit(1)
 
 # Group by feature count
@@ -29,7 +30,10 @@ results = {}
 
 for file in metrics_files:
     # Extract feature count from filename
-    if "3features" in file:
+    if "without_history" in file:
+        feature_count = 10
+        feature_set = "10 features (X4-X13, no history)"
+    elif "3features" in file:
         feature_count = 3
         feature_set = "3 features (baseline)"
     elif "5features" in file:
@@ -40,7 +44,7 @@ for file in metrics_files:
         feature_set = "9 features (+monetary/brand)"
     elif "tuned" in file:
         feature_count = 13
-        feature_set = "13 features (full - tuned)"
+        feature_set = "13 features (X1-X13, with history)"
     else:
         continue
     
@@ -75,14 +79,20 @@ for feature_count, data in sorted_results:
     metrics = data['metrics']
     feature_set = data['feature_set']
     
-    # Extract values
-    p5 = metrics.get('precision', {}).get(5, 0)
-    p10 = metrics.get('precision', {}).get(10, 0)
-    p20 = metrics.get('precision', {}).get(20, 0)
-    r10 = metrics.get('recall', {}).get(10, 0)
-    r20 = metrics.get('recall', {}).get(20, 0)
-    ndcg10 = metrics.get('ndcg', {}).get(10, 0)
-    map10 = metrics.get('map', {}).get(10, 0)
+    # Extract values - handle both string and int keys
+    precision_dict = metrics.get('precision', {})
+    recall_dict = metrics.get('recall', {})
+    ndcg_dict = metrics.get('ndcg', {})
+    map_dict = metrics.get('map', {})
+    
+    # Try both string and int keys
+    p5 = precision_dict.get('5', precision_dict.get(5, 0))
+    p10 = precision_dict.get('10', precision_dict.get(10, 0))
+    p20 = precision_dict.get('20', precision_dict.get(20, 0))
+    r10 = recall_dict.get('10', recall_dict.get(10, 0))
+    r20 = recall_dict.get('20', recall_dict.get(20, 0))
+    ndcg10 = ndcg_dict.get('10', ndcg_dict.get(10, 0))
+    map10 = map_dict.get('10', map_dict.get(10, 0))
     
     print(f"{feature_set:<30} {p5:<8.4f} {p10:<8.4f} {p20:<8.4f} {r10:<8.4f} {r20:<8.4f} {ndcg10:<8.4f} {map10:<8.4f}")
 
