@@ -50,11 +50,14 @@ Top 5 features quan trọng nhất:
 │ Logistic Reg     │   0.0500    │  0.0328  │  0.1030  │
 │ Random Forest    │   0.0583    │  0.0388  │  0.1130  │
 │ XGBoost          │   0.0611    │  0.0407  │  0.1181  │
-│ LightGBM (def)   │   0.0620    │  0.0412  │  0.1190  │
-│ LightGBM (tuned) │   0.0622    │  0.0438  │  0.0962  │ (Dùng)
+│ LightGBM (def)   │   0.0620    │  0.0409  │  0.1194  │
+│ LightGBM (tuned) │   0.0622    │  0.0415  │  0.1195  │ (WITH history)
+│ WITHOUT history  │   0.0332    │  0.0217  │  0.0726  │ (X4-X13)
 └──────────────────┴─────────────┴──────────┴──────────┘
 
-Public test score: 6.89% (trên hệ thống thầy)
+Public test score: 
+- WITH history: 6.89% (trên hệ thống thầy)
+- WITHOUT history: 1.35%
 
 Training time:
 - Logistic: ~2 minutes

@@ -81,7 +81,7 @@
 | Logistic | 0.0328 | 0.1030 |
 | Random Forest | 0.0388 | 0.1130 |
 | XGBoost | 0.0407 | 0.1181 |
-| **LightGBM (default)** | 0.0412 | 0.1190 |
+| **LightGBM (default)** | 0.0409 | 0.1194 |
 | **LightGBM (tuned)** | **0.0415** | **0.1195** |
 
 #### Slide 4: CÁC ĐẶC TRƯNG (13 FEATURES)
@@ -150,10 +150,10 @@
 5. Tăng coverage: 20% → 60% customers → +29% accuracy
 
 **Kết quả cuối:**
-- **Precision@10 (internal)**: 0.0438 (4.38%)
-- **Recall@10 (internal)**: 0.1230 (12.30%)
-- **NDCG@10 (internal)**: 0.0962 (9.62%)
-- **Điểm công khai**: 6.89% 
+- **Precision@10 (internal WITH history)**: 4.15%
+- **NDCG@10 (internal WITH history)**: 11.95%
+- **Điểm công khai WITH history**: 6.89% 
+- **Điểm công khai WITHOUT history**: 1.35%
 - **Groundtruth**: 644,970 customers (NEW)
 - **Submission**: 100,000 customers (top score)
 

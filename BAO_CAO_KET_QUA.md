@@ -126,9 +126,10 @@ python optimize_submission.py
 - **Coverage**: 463,340 / 644,970 = 71.8% customers có predictions
 
 ### Kết quả:
-- **Public score**: 6.89%
+- **Public score WITH history**: 6.89%
+- **Public score WITHOUT history**: 1.35%
 - **Tốt hơn random baseline** (< 1%)
-- **Precision@10**: 4.38% → có thể cải thiện bằng ensemble models
+- **Precision@10 internal**: 4.15% (WITH history) vs 2.17% (WITHOUT history)
 
 ---
 

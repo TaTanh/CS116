@@ -156,11 +156,11 @@ print(f"  Precision@10: {impact_p10:+.2f}%")
 print(f"  NDCG@10: {impact_ndcg:+.2f}%")
 
 if impact_p10 < -5:
-    print(f"\n⚠️  Historical features (X1-X3) are IMPORTANT!")
+    print(f"\nHistorical features (X1-X3) are IMPORTANT!")
     print(f"  Removing them causes significant performance drop")
 elif impact_p10 > 5:
-    print(f"\n✅ Historical features are NOT important!")
+    print(f"\nHistorical features are NOT important!")
     print(f"  Recent features (X4-X13) are sufficient")
 else:
-    print(f"\n➡️  Historical features have MINOR impact")
+    print(f"\nHistorical features have MINOR impact")
     print(f"  Both approaches work similarly")
