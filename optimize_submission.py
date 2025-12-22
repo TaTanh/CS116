@@ -19,9 +19,9 @@ with open("groundtruth.pkl", "rb") as f:
 valid_customers = set(groundtruth.keys())
 print(f"Valid customers in groundtruth: {len(valid_customers):,}")
 
-# 2. Load predictions (NEW - from new groundtruth)
+# 2. Load predictions (LightGBM with new groundtruth)
 print("\n[2] Loading predictions...")
-predictions_file = "outputs/predictions/predictions_new_groundtruth_20251221_222506.parquet"
+predictions_file = "outputs/predictions/predictions_lightgbm_with_newgroundtruth.parquet"
 predictions_df = pl.read_parquet(predictions_file)
 print(f"Total predictions: {predictions_df.shape[0]:,}")
 print(f"Total customers: {predictions_df['customer_id'].n_unique():,}")

@@ -20,9 +20,9 @@ with open("groundtruth.pkl", "rb") as f:
 valid_customers = set(groundtruth.keys())
 print(f"Valid customers in groundtruth: {len(valid_customers):,}")
 
-# 2. Load predictions from 13 features model (TUNED - BEST model)
-print("\n[2] Loading predictions from 13 features tuned model...")
-predictions_file = "outputs/predictions/predictions_new_groundtruth_20251221_222506.parquet"
+# 2. Load predictions from best model (LightGBM with new groundtruth)
+print("\n[2] Loading predictions from best model...")
+predictions_file = "outputs/predictions/predictions_lightgbm_with_newgroundtruth.parquet"
 
 if not os.path.exists(predictions_file):
     print(f"ERROR: File not found: {predictions_file}")
