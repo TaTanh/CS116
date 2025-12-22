@@ -1,11 +1,9 @@
-"""Test model performance with different feature sets.
+"""Test model performance with different feature sets using existing trained model.
 
-This script trains new models with different feature sets:
+This script loads the best trained model (lightgbm_tuned) and evaluates it with:
 1. 3 basic features (X1, X2, X3) - baseline from teacher
-2. 5 features (X1-X5) - added recency & frequency
+2. 5 features (X1-X5) - added recency & frequency  
 3. 9 features (X1-X9) - added monetary & brand loyalty
-
-Uses 40% sample of data to avoid memory issues.
 """
 
 import json
@@ -30,23 +28,32 @@ from src.recommender.data import (
     load_users,
 )
 from src.recommender.features import build_feature_label_table
-from src.recommender.train import train_model, predict_and_rank
+from src.recommender.train import predict_and_rank
 from src.recommender.metrics import evaluate_recommendations
 
 
-def test_feature_set(
-    feature_label_table: pl.DataFrame,
+def load_model(model_path: str):
+    """Load a trained model from pickle file."""
+    with open(model_path, "rb") as f:
+        model = pickle.load(f)
+    return model
+
+
+def test_feature_set_with_model(
+    model,
+    feature_label_table: pl.LazyFrame,
     feature_columns: List[str],
     feature_set_name: str,
     model_type: str = "lightgbm",
 ) -> dict:
-    """Train and test model with specific feature set.
+    """Test model with specific feature set.
     
     Args:
-        feature_label_table: Full feature table (already collected)
+        model: Pre-trained model
+        feature_label_table: Full feature table
         feature_columns: List of features to use
         feature_set_name: Name for this feature set
-        model_type: Type of model to train
+        model_type: Type of model
         
     Returns:
         Dictionary with metrics and metadata
@@ -56,18 +63,8 @@ def test_feature_set(
     print(f"Features ({len(feature_columns)}): {', '.join(feature_columns)}")
     print(f"{'='*80}\n")
     
-    # Train model with selected features
-    print("Training model...")
-    model = train_model(
-        feature_label_table=feature_label_table,
-        feature_columns=feature_columns,
-        label_column="Y",
-        model_type=model_type,
-        random_state=RANDOM_STATE,
-    )
-    
-    # Make predictions
-    print("\nMaking predictions...")
+    # Make predictions using only the specified features
+    print("Making predictions...")
     predictions = predict_and_rank(
         model=model,
         feature_label_table=feature_label_table,
@@ -75,8 +72,16 @@ def test_feature_set(
         top_k=10,
     )
     
+    print(f"Predictions shape: {predictions.shape}")
+    
     # Get ground truth
-    ground_truth = feature_label_table.filter(pl.col("Y") == 1).select(["customer_id", "item_id"])
+    print("Extracting ground truth...")
+    if isinstance(feature_label_table, pl.LazyFrame):
+        ground_truth = feature_label_table.filter(pl.col("Y") == 1).select(["customer_id", "item_id"]).collect()
+    else:
+        ground_truth = feature_label_table.filter(pl.col("Y") == 1).select(["customer_id", "item_id"])
+    
+    print(f"Ground truth shape: {ground_truth.shape}")
     
     # Evaluate
     print("\nEvaluating recommendations...")
@@ -112,45 +117,30 @@ def test_feature_set(
 
 def main():
     """Main execution function."""
-    # Load pre-trained model
+    
+    # Load the best trained model
     model_path = MODELS_DIR / "model_lightgbm_tuned_20251221_103746.pkl"
     print(f"Loading model from: {model_path}")
-    print("Loading data...")
+    model = load_model(str(model_path))
+    print("Model loaded successfully!")
+    
+    print("\nLoading data...")
     transactions = load_transactions(TRANSACTIONS_PATTERN)
     items = load_items(ITEMS_PATTERN)
     users = load_users(USERS_PATTERN)
     
-    # Define time windows (same as when model was trained)
+    # Define time windows (same as in training)
     print("\nBuilding features and labels...")
     begin_hist = datetime(2024, 1, 1)
     end_hist = datetime(2024, 11, 1)
     begin_recent = datetime(2024, 11, 1)
     end_recent = datetime(2024, 12, 1)
     
-    # Sample customers to reduce memory usage (40% of customers)
-    print("\nSampling 40% of customers to reduce memory...")
-    all_customers = (
-        transactions
-        .select("customer_id")
-        .unique()
-        .collect()
-    )
+    print(f"Historical window: {begin_hist.date()} to {end_hist.date()}")
+    print(f"Recent window:     {begin_recent.date()} to {end_recent.date()}")
     
-    import random
-    random.seed(RANDOM_STATE)
-    n_sample = max(1000, int(len(all_customers) * 0.4))
-    sampled_customers = all_customers.sample(n=n_sample)
-    print(f"Sampled {len(sampled_customers):,} customers (40% of total)")
-    
-    # Filter transactions to sampled customers
-    transactions_sampled = transactions.join(
-        sampled_customers.lazy(),
-        on="customer_id",
-        how="inner"
-    )
-    
-    feature_label_table_lazy = build_feature_label_table(
-        transactions=transactions_sampled,
+    feature_label_table = build_feature_label_table(
+        transactions=transactions,
         items=items,
         users=users,
         begin_hist=begin_hist,
@@ -158,11 +148,6 @@ def main():
         begin_recent=begin_recent,
         end_recent=end_recent,
     )
-    
-    # Collect once with streaming to save memory
-    print("\nCollecting features with streaming...")
-    feature_label_table = feature_label_table_lazy.collect(streaming=True)
-    print(f"Features collected: {feature_label_table.shape}")
     
     # Define feature sets to test
     feature_sets = {
@@ -191,11 +176,12 @@ def main():
         ],
     }
     
-    # Test each feature set - train new model for each
+    # Test each feature set
     all_results = []
     
     for set_name, features in feature_sets.items():
-        result = test_feature_set(
+        result = test_feature_set_with_model(
+            model=model,
             feature_label_table=feature_label_table,
             feature_columns=features,
             feature_set_name=set_name,

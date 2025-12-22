@@ -176,6 +176,9 @@ def _compute_monetary_features(
     Computes X7_avg_items_per_purchase = total_items / num_orders
     This represents the average number of items per order/purchase.
     
+    Orders are identified by grouping items with the same customer_id and created_date.
+    Items purchased at the same datetime = one order.
+    
     Args:
         candidates: LazyFrame with (customer_id, item_id) pairs.
         hist_txns: Historical transactions.
@@ -188,7 +191,9 @@ def _compute_monetary_features(
         .group_by("customer_id")
         .agg([
             pl.count().alias("total_items"),  # Total number of items purchased
-            pl.col("order_id").n_unique().alias("num_orders")  # Number of unique orders
+            # Count unique created_date (datetime) as proxy for number of orders
+            # Items bought at same datetime = same order
+            pl.col("created_date").n_unique().alias("num_orders")
         ])
         .with_columns(
             (pl.col("total_items") / pl.col("num_orders").clip(1))
