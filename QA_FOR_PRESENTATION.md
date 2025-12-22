@@ -354,6 +354,7 @@ Quy tắc: Learning rate càng nhỏ → cần n_estimators càng lớn
 
 ---
 
+<<<<<<< HEAD
 ## CÁCH CHỌN TẬP CANDIDATE 
 > Em dùng _generate_candidates_for_features() với 3 phương pháp:
 
@@ -384,6 +385,57 @@ Model chỉ cần rank ~250-300 items/customer
 
 
 ## 9️⃣ NẾU LÀM LẠI, EM SẼ CẢI THIỆN GÌ?
+=======
+## 9️⃣ TẠI SAO HISTORICAL FEATURES QUAN TRỌNG?
+
+### CÂU TRẢ LỜI MẪU:
+
+> "Em đã thử nghiệm 2 models để chứng minh:
+> 
+> **Experiment Setup:**
+> - Model 1: WITH history (X1-X13) - 13 features
+> - Model 2: WITHOUT history (X4-X13) - 10 features
+> - Cùng hyperparameters, cùng groundtruth
+> 
+> **Results:**
+> | Model | Internal P@10 | Web P@10 | Impact |
+> |-------|---------------|----------|--------|
+> | WITH history | 4.15% | **6.89%** | Baseline |
+> | WITHOUT history | 2.17% | **1.35%** | **-80.4%** |
+> 
+> **Phân tích:**
+> - Bỏ X1-X3 → Score giảm từ 6.89% xuống 1.35%
+> - Giảm 80.4% performance!
+> - Gần như mất hết khả năng dự đoán
+> 
+> **Lý do tại sao X1-X3 quan trọng:**
+> 
+> **1. X1_brand_cnt_hist (số brands đã mua):**
+> - Biết khách thích brands cao cấp hay bình dân
+> - Khách mua 1-2 brands → dễ predict (trung thành)
+> - Khách mua >10 brands → khó predict (đa dạng)
+> 
+> **2. X2_age_group_cnt_hist (age groups):**
+> - Biết khách mua cho ai (trẻ em, người lớn, cao tuổi)
+> - Ví dụ: Mua nhiều age_group trẻ em → recommend đồ trẻ em
+> 
+> **3. X3_category_cnt_hist (categories):**
+> - Biết sở thích category của khách
+> - Khách chỉ mua electronics → không recommend quần áo
+> 
+> **Recent features (X4-X13) KHÔNG ĐỦ vì:**
+> - X4-X13 chỉ biết WHEN, HOW OFTEN khách mua
+> - Nhưng KHÔNG biết WHAT khách thích mua
+> - Historical context là KEY để hiểu preference!
+> 
+> **Kết luận:**
+> → **'You are what you bought'** - Lịch sử mua hàng quan trọng hơn
+>    hành vi gần đây để dự đoán tương lai."
+
+---
+
+## 🔟 NẾU LÀM LẠI, EM SẼ CẢI THIỆN GÌ?
+>>>>>>> 587470d1e4111443909a1bc576a01a9af3bd4c78
 
 ### CÂU TRẢ LỜI MẪU:
 
