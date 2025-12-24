@@ -7,3 +7,4 @@ pyarrow>=14.0.0
 click>=8.1.0
 jupyter>=1.0.0
 matplotlib>=3.7.0
+flask>=3.0.0

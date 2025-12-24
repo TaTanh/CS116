@@ -1,0 +1,87 @@
+🎯 QUICK START - DEMO PRESENTATION
+==================================
+
+📌 CONSOLE DEMO (Nhanh & Đơn giản)
+----------------------------------
+Chạy lệnh:
+    E:/Nam_3_HK1/PythonMayHoc/neSemi/.venv/Scripts/python.exe demo_presentation.py
+
+Hiển thị:
+✅ Best Case - Khách hàng dễ dự đoán nhất
+✅ Worst Case - Khách hàng khó dự đoán nhất  
+✅ Random Case - Khách hàng ngẫu nhiên
+✅ Feature Importance - Top 10 features quan trọng
+✅ Summary Statistics
+
+⏱️ Thời gian: ~30 giây
+
+
+🌐 WEB DEMO (Đẹp & Tương tác)
+-----------------------------
+Chạy lệnh:
+    E:/Nam_3_HK1/PythonMayHoc/neSemi/.venv/Scripts/python.exe demo_web.py
+
+Sau đó mở trình duyệt:
+    http://localhost:5000
+
+Hiển thị:
+✅ Best/Worst/Random Cases với UI đẹp
+✅ Feature Importance Chart (interactive)
+✅ Real-time Statistics
+✅ Color-coded Results
+✅ Responsive Design
+
+⏱️ Thời gian: ~30 giây loading + web interface
+
+
+📋 FEATURES CHI TIẾT
+--------------------
+
+BEST CASE ⭐
+- Precision cao nhất trong sample
+- Thường ≥ 70%
+- Đại diện: Brand loyal customers
+
+WORST CASE ⚠️  
+- Precision thấp nhất trong sample
+- Thường < 20%
+- Đại diện: Diverse shoppers
+
+RANDOM CASE 🎲
+- Random selection
+- Thường 30-50%
+- Đại diện: Typical customers
+
+FEATURE IMPORTANCE 📊
+- Top 10-15 features quan trọng nhất
+- Dựa trên LightGBM gain
+- Giúp hiểu model behavior
+
+
+🔧 TROUBLESHOOTING
+------------------
+
+❌ Lỗi: Model not found
+➜ Kiểm tra file model có tồn tại:
+  outputs/models/model_lightgbm_tuned_20251221_103746.pkl
+
+❌ Lỗi: Flask not installed  
+➜ Đã cài đặt rồi! Chạy lại command
+
+❌ Port 5000 bị chiếm
+➜ Sửa port trong demo_web.py (dòng cuối)
+
+
+💡 TIPS
+-------
+
+1. Console demo: Tốt cho testing nhanh
+2. Web demo: Tốt cho presentation
+3. Có thể chạy cả 2 song song
+4. Web demo tự động refresh khi có thay đổi
+5. Xem DEMO_GUIDE.md để biết thêm chi tiết
+
+
+✅ READY TO DEMO!
+-----------------
+Tất cả đã được setup xong. Chọn một trong hai cách trên và bắt đầu demo!

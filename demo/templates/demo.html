@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Recommendation System - Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .refresh-all-button {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .refresh-all-button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+        
+        .refresh-all-button:active {
+            transform: translateY(0);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .label {
+            color: #666;
+            font-size: 0.95em;
+        }
+        
+        .cases-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .case-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .case-card.best {
+            border-top: 5px solid #10b981;
+        }
+        
+        .case-card.worst {
+            border-top: 5px solid #ef4444;
+        }
+        
+        .case-card.random {
+            border-top: 5px solid #f59e0b;
+            position: relative;
+        }
+        
+        .refresh-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 1.3em;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        
+        .refresh-button:hover {
+            background: #d97706;
+            transform: rotate(180deg) scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .refresh-button:active {
+            transform: rotate(180deg) scale(0.95);
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border-radius: 15px;
+            z-index: 5;
+        }
+        
+        .loading-overlay.active {
+            display: flex;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f4f6;
+            border-top: 5px solid #f59e0b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .case-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .case-badge {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .best .case-badge {
+            background: #10b981;
+            color: white;
+        }
+        
+        .worst .case-badge {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .random .case-badge {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .customer-info {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .customer-info p {
+            margin: 5px 0;
+            color: #555;
+        }
+        
+        .recommendations {
+            margin-bottom: 20px;
+        }
+        
+        .recommendations h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .rec-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f9fafb;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        
+        .rec-item.hit {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+        }
+        
+        .rec-item:hover {
+            background: #e5e7eb;
+        }
+        
+        .rec-item.hit:hover {
+            background: #a7f3d0;
+        }
+        
+        .rec-rank {
+            font-weight: bold;
+            color: #667eea;
+            min-width: 30px;
+        }
+        
+        .rec-details {
+            flex: 1;
+            margin: 0 15px;
+        }
+        
+        .rec-score {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .rec-hit {
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .evaluation {
+            background: #f3f4f6;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .evaluation h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .eval-metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .eval-metric:last-child {
+            border-bottom: none;
+        }
+        
+        .eval-label {
+            color: #666;
+        }
+        
+        .eval-value {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .feature-importance {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .feature-importance h2 {
+            color: #333;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 500px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+            font-size: 1.5em;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .instruction-banner {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+            color: #333;
+            font-size: 0.95em;
+        }
+        
+        .instruction-banner strong {
+            color: #667eea;
+        }
+        
+        .instruction-banner .emoji {
+            font-size: 1.2em;
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button class="refresh-all-button" onclick="location.reload()" title="Refresh All Cases"> Refresh All</button>
+            <h1>Product Recommendation System</h1>
+            <p>Interactive Demo - Best, Worst & Random Cases with Feature Analysis</p>
+        </div>
+        
+        <div id="overview" class="stats-grid">
+            <!-- Stats will be loaded here -->
+        </div>
+        
+        <div class="instruction-banner">
+            <span class="emoji"></span>
+            <strong>Interactive Demo:</strong> 
+            Click <span class="emoji">🔄</span> on Random Case to get a new random customer, 
+            or use <strong>Refresh All</strong> button to reload everything!
+            <span class="emoji"></span>
+        </div>
+        
+        <div id="cases" class="cases-grid">
+            <!-- Cases will be loaded here -->
+        </div>
+        
+        <div class="feature-importance">
+            <h2>Feature Importance Analysis</h2>
+            <div class="chart-container">
+                <canvas id="featureChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Product Recommendation System Demo | Powered by LightGBM</p>
+        </div>
+    </div>
+    
+    <script>
+        let currentRandomCase = null;
+        
+        // Load overview stats
+        fetch('/api/overview')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('overview').innerHTML = `
+                    <div class="stat-card">
+                        <div class="number">${data.model_name}</div>
+                        <div class="label">Model Type</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">${data.training_samples}</div>
+                        <div class="label">Training Samples</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">${data.num_features}</div>
+                        <div class="label">Features</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number">${data.total_customers.toLocaleString()}</div>
+                        <div class="label">Test Customers</div>
+                    </div>
+                `;
+            });
+        
+        // Function to render a single case
+        function renderCase(caseType, caseData, containerId) {
+            const title = caseType === 'best' ? 'BEST CASE ' : 
+                         caseType === 'worst' ? 'WORST CASE ' : 
+                         'RANDOM CASE ';
+            const precision = (caseData.precision * 100).toFixed(1);
+            
+            const recommendations = caseData.top10.map((rec, idx) => {
+                const isHit = caseData.actual.includes(rec.item_id);
+                return `
+                    <div class="rec-item ${isHit ? 'hit' : ''}">
+                        <span class="rec-rank">#${idx + 1}</span>
+                        <div class="rec-details">
+                            <strong>Item ${rec.item_id}</strong>
+                            <div class="rec-score">Score: ${rec.score.toFixed(3)}</div>
+                        </div>
+                        ${isHit ? '<span class="rec-hit">✓ HIT</span>' : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            const refreshButton = caseType === 'random' ? 
+                `<button class="refresh-button" onclick="refreshRandomCase()" title="Get New Random Customer">🔄</button>
+                 <div class="loading-overlay" id="loading-overlay">
+                     <div class="spinner"></div>
+                 </div>` : '';
+            
+            return `
+                <div class="case-card ${caseType} fade-in" id="${containerId}">
+                    ${refreshButton}
+                    <div class="case-header">
+                        <div class="case-title">${title}</div>
+                        <div class="case-badge">${precision}%</div>
+                    </div>
+                    
+                    <div class="customer-info">
+                        <p><strong>Customer ID:</strong> ${caseData.customer_id}</p>
+                        <p><strong>Profile:</strong> ${
+                            caseType === 'best' ? 'Highly Predictable' :
+                            caseType === 'worst' ? 'Unpredictable' :
+                            'Typical Customer'
+                        }</p>
+                    </div>
+                    
+                    <div class="recommendations">
+                        <h3>Top 10 Recommendations</h3>
+                        ${recommendations}
+                    </div>
+                    
+                    <div class="evaluation">
+                        <h3>Evaluation</h3>
+                        <div class="eval-metric">
+                            <span class="eval-label">Predicted Items:</span>
+                            <span class="eval-value">10</span>
+                        </div>
+                        <div class="eval-metric">
+                            <span class="eval-label">Actual Purchases:</span>
+                            <span class="eval-value">${caseData.actual.length}</span>
+                        </div>
+                        <div class="eval-metric">
+                            <span class="eval-label">Matched Items:</span>
+                            <span class="eval-value">${caseData.hits}</span>
+                        </div>
+                        <div class="eval-metric">
+                            <span class="eval-label">Precision@10:</span>
+                            <span class="eval-value">${precision}%</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Load all cases
+        function loadCases() {
+            fetch('/api/cases')
+                .then(response => response.json())
+                .then(data => {
+                    const casesHtml = 
+                        renderCase('best', data.best, 'case-best') +
+                        renderCase('worst', data.worst, 'case-worst') +
+                        renderCase('random', data.random, 'case-random');
+                    
+                    document.getElementById('cases').innerHTML = casesHtml;
+                    currentRandomCase = data.random;
+                });
+        }
+        
+        // Refresh only random case
+        function refreshRandomCase() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const randomContainer = document.getElementById('case-random');
+            
+            // Show loading
+            loadingOverlay.classList.add('active');
+            
+            fetch('/api/cases')
+                .then(response => response.json())
+                .then(data => {
+                    // Hide loading
+                    loadingOverlay.classList.remove('active');
+                    
+                    // Update only random case
+                    const newHtml = renderCase('random', data.random, 'case-random');
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = newHtml;
+                    
+                    // Replace the old card with new one
+                    randomContainer.replaceWith(tempDiv.firstElementChild);
+                    currentRandomCase = data.random;
+                })
+                .catch(error => {
+                    console.error('Error refreshing random case:', error);
+                    loadingOverlay.classList.remove('active');
+                });
+        }
+        
+        // Initial load
+        loadCases();
+        
+        // Load feature importance
+        fetch('/api/feature_importance')
+            .then(response => response.json())
+            .then(data => {
+                const top15 = data.slice(0, 15);
+                
+                const ctx = document.getElementById('featureChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: top15.map(f => f.name),
+                        datasets: [{
+                            label: 'Importance (%)',
+                            data: top15.map(f => f.percentage),
+                            backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.parsed.x.toFixed(2)}%`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Importance (%)',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                }
+                            },
+                            y: {
+                                ticks: {
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+    </script>
+</body>
+</html>
